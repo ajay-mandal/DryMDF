@@ -13,6 +13,8 @@
     "type-check": "turbo run type-check",
     "format": "prettier --write \"**/*.{ts,tsx,md,json}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,md,json}\"",
+    "quality:check": "pnpm run format:check && pnpm run lint && pnpm run type-check",
+    "quality:fix": "pnpm run format && pnpm run lint && pnpm run type-check",
     "clean": "turbo run clean && rm -rf node_modules",
     "prepare": "husky install"
   },
