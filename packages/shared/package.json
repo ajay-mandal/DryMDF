@@ -1,0 +1,16 @@
+{
+  "name": "@drypdf/shared",
+  "version": "0.1.0",
+  "description": "Shared types and constants for DryPDF",
+  "private": true,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "type-check": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3"
+  }
+}
