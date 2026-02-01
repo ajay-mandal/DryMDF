@@ -23,7 +23,7 @@ export class WebsocketGateway
   implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
 {
   @WebSocketServer()
-  server: Server;
+  server!: Server;
 
   afterInit() {
     console.log("✅ WebSocket Gateway initialized");

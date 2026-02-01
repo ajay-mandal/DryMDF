@@ -11,5 +11,5 @@ export class ConvertHtmlDto {
   @IsString()
   @MinLength(1)
   @MaxLength(500000)
-  markdown: string;
+  markdown!: string;
 }

@@ -5,7 +5,7 @@ import { ConfigService } from "@nestjs/config";
 export class StorageService {
   constructor(private configService: ConfigService) {}
 
-  async upload(buffer: Buffer, filename: string): Promise<string> {
+  async upload(_buffer: Buffer, filename: string): Promise<string> {
     const storageType = this.configService.get<string>("storage.type");
 
     if (storageType === "s3") {

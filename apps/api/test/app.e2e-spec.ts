@@ -1,6 +1,6 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { INestApplication } from "@nestjs/common";
-import * as request from "supertest";
+import request from "supertest";
 import { AppModule } from "./../src/app.module";
 
 describe("AppController (e2e)", () => {
@@ -24,7 +24,7 @@ describe("AppController (e2e)", () => {
       return request(app.getHttpServer())
         .get("/api/health")
         .expect(200)
-        .expect((res) => {
+        .expect((res: request.Response) => {
           expect(res.body).toHaveProperty("status", "ok");
           expect(res.body).toHaveProperty("timestamp");
           expect(res.body).toHaveProperty("uptime");
@@ -40,7 +40,7 @@ describe("AppController (e2e)", () => {
           markdown: "# Hello World",
         })
         .expect(200)
-        .expect((res) => {
+        .expect((res: request.Response) => {
           expect(res.body).toHaveProperty("html");
           expect(res.body.html).toContain("<h1>");
         });

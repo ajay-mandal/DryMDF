@@ -67,7 +67,7 @@ export class ConvertProcessor {
       this.wsGateway.sendProgress(clientId, {
         stage: "failed",
         progress: 0,
-        message: `Error: ${error.message}`,
+        message: `Error: ${(error as Error).message}`,
       });
       throw error;
     }

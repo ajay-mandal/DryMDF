@@ -10,18 +10,28 @@ export class PdfService implements OnModuleInit, OnModuleDestroy {
   constructor(private configService: ConfigService) {}
 
   async onModuleInit() {
-    const executablePath = this.configService.get<string>(
-      "puppeteer.executablePath",
-    );
-    const args = this.configService.get<string[]>("puppeteer.args");
+    try {
+      const executablePath = this.configService.get<string>(
+        "puppeteer.executablePath",
+      );
+      const args = this.configService.get<string[]>("puppeteer.args");
 
-    this.browser = await puppeteer.launch({
-      headless: "new",
-      executablePath,
-      args,
-    });
+      this.browser = await puppeteer.launch({
+        headless: "new",
+        executablePath,
+        args: args || [
+          "--no-sandbox",
+          "--disable-setuid-sandbox",
+          "--disable-dev-shm-usage",
+        ],
+      });
 
-    console.log("✅ Puppeteer browser initialized");
+      console.log("✅ Puppeteer browser initialized");
+    } catch (error) {
+      console.error("❌ Failed to initialize Puppeteer:", error);
+      // Don't throw - allow app to start without PDF generation
+      // PDF generation will fail gracefully when attempted
+    }
   }
 
   async onModuleDestroy() {

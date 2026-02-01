@@ -3,7 +3,7 @@ import { ConfigModule } from "@nestjs/config";
 import { ThrottlerModule } from "@nestjs/throttler";
 import { BullModule } from "@nestjs/bull";
 import { CacheModule } from "@nestjs/cache-manager";
-import * as redisStore from "cache-manager-ioredis";
+
 import configuration from "./config/configuration";
 import { HealthModule } from "./modules/health/health.module";
 import { ConvertModule } from "./modules/convert/convert.module";
@@ -42,17 +42,11 @@ import { WebsocketModule } from "./modules/websocket/websocket.module";
       }),
     }),
 
-    // Cache with Redis
-    CacheModule.registerAsync({
+    // Cache with memory store (Redis optional)
+    CacheModule.register({
       isGlobal: true,
-      useFactory: () => ({
-        store: redisStore,
-        host: process.env.REDIS_HOST || "localhost",
-        port: parseInt(process.env.REDIS_PORT || "6379", 10),
-        password: process.env.REDIS_PASSWORD || undefined,
-        db: parseInt(process.env.REDIS_DB || "0", 10),
-        ttl: 3600, // 1 hour default
-      }),
+      ttl: 3600, // 1 hour default (in seconds)
+      max: 100, // maximum number of items in cache
     }),
 
     // Feature modules

@@ -84,14 +84,14 @@ export class ConvertPdfDto {
   @IsString()
   @MinLength(1)
   @MaxLength(500000)
-  markdown: string;
+  markdown!: string;
 
   @ApiProperty({
     description: "Client ID for WebSocket progress updates",
     example: "client-123456",
   })
   @IsString()
-  clientId: string;
+  clientId!: string;
 
   @ApiPropertyOptional({
     type: PdfOptionsDto,
