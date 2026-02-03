@@ -28,8 +28,8 @@ services:
       redis:
         condition: service_healthy
     volumes:
-      - ./apps/api:/app/apps/api
-      - /app/apps/api/node_modules
+      - ./apps/backend:/app/apps/backend
+      - /app/apps/backend/node_modules
       - /app/node_modules
 
   web:
@@ -44,9 +44,9 @@ services:
     depends_on:
       - api
     volumes:
-      - ./apps/web:/app/apps/web
-      - /app/apps/web/node_modules
-      - /app/apps/web/.next
+      - ./apps/frontend:/app/apps/frontend
+      - /app/apps/frontend/node_modules
+      - /app/apps/frontend/.next
       - /app/node_modules
 
 volumes:

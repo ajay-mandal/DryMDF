@@ -1,5 +1,5 @@
 {
-  "name": "@drypdf/api",
+  "name": "@drypdf/backend",
   "version": "0.1.0",
   "description": "NestJS backend API for DryPDF converter",
   "private": true,

@@ -36,9 +36,9 @@ pnpm install
 # Set up environment files
 echo "⚙️  Setting up environment files..."
 
-if [ ! -f "apps/api/.env" ]; then
-    cp apps/api/.env.example apps/api/.env
-    echo "✅ Created apps/api/.env"
+if [ ! -f "apps/backend/.env" ]; then
+    cp apps/backend/.env.example apps/backend/.env
+    echo "✅ Created apps/backend/.env"
 else
     echo "ℹ️  apps/api/.env already exists"
 fi

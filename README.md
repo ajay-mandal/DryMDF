@@ -61,8 +61,8 @@ md-to-pdf/
 pnpm install
 
 # Set up environment variables
-cp apps/web/.env.example apps/web/.env.local
-cp apps/api/.env.example apps/api/.env
+cp apps/frontend/.env.example apps/frontend/.env.local
+cp apps/backend/.env.example apps/backend/.env
 
 # Start development servers
 pnpm dev
