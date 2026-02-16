@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import mermaid from "mermaid";
 
 interface MermaidRendererProps {
@@ -9,8 +9,6 @@ interface MermaidRendererProps {
 }
 
 export function MermaidRenderer({ chart, id }: MermaidRendererProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-
   useEffect(() => {
     mermaid.initialize({
       startOnLoad: false,
@@ -20,19 +18,46 @@ export function MermaidRenderer({ chart, id }: MermaidRendererProps) {
     });
 
     const renderChart = async () => {
-      if (containerRef.current && chart) {
-        try {
-          const { svg } = await mermaid.render(`mermaid-${id}`, chart);
-          containerRef.current.innerHTML = svg;
-        } catch (error) {
-          console.error("Mermaid render error:", error);
-          containerRef.current.innerHTML = `<pre class="text-red-500 text-sm p-4 bg-red-50 dark:bg-red-900/20 rounded">Invalid Mermaid syntax:\n${error instanceof Error ? error.message : "Unknown error"}</pre>`;
+      const container = document.getElementById(`mermaid-container-${id}`);
+      if (!container || !chart) return;
+
+      // Clear the container first
+      container.innerHTML = "";
+
+      try {
+        // Use a unique ID for each render to avoid caching issues
+        const uniqueId = `mermaid-svg-${id}-${Date.now()}`;
+        const { svg } = await mermaid.render(uniqueId, chart);
+
+        // Check if container still exists before updating
+        const currentContainer = document.getElementById(
+          `mermaid-container-${id}`,
+        );
+        if (currentContainer) {
+          currentContainer.innerHTML = svg;
+        }
+      } catch (err) {
+        console.error("Mermaid render error:", err);
+        const errorMessage =
+          err instanceof Error ? err.message : "Unknown error";
+
+        const currentContainer = document.getElementById(
+          `mermaid-container-${id}`,
+        );
+        if (currentContainer) {
+          currentContainer.innerHTML = `<pre class="text-red-500 text-sm p-4 bg-red-50 dark:bg-red-900/20 rounded">Invalid Mermaid syntax:\n${errorMessage}</pre>`;
         }
       }
     };
 
-    renderChart();
+    // Small delay to ensure container is in DOM
+    const timer = setTimeout(renderChart, 100);
+
+    return () => {
+      clearTimeout(timer);
+    };
   }, [chart, id]);
 
-  return <div ref={containerRef} className="mermaid-container my-4" />;
+  // This component doesn't render anything directly - it renders into existing containers
+  return null;
 }

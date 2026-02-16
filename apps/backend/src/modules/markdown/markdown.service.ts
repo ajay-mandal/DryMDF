@@ -6,23 +6,43 @@ import remarkMath from "remark-math";
 import remarkRehype from "remark-rehype";
 import rehypeKatex from "rehype-katex";
 import rehypeHighlight from "rehype-highlight";
-import rehypeSanitize from "rehype-sanitize";
 import rehypeStringify from "rehype-stringify";
 
 @Injectable()
 export class MarkdownService {
   async parse(markdown: string): Promise<string> {
+    // Extract Mermaid diagrams and replace with placeholders
+    const mermaidDiagrams: string[] = [];
+    const mermaidRegex = /```mermaid\n([\s\S]*?)```/g;
+    const processedMarkdown = markdown.replace(mermaidRegex, (_, diagram) => {
+      const index = mermaidDiagrams.length;
+      mermaidDiagrams.push(diagram.trim());
+      return `<!--MERMAID_${index}-->`;
+    });
+
     const result = await unified()
       .use(remarkParse)
       .use(remarkGfm)
       .use(remarkMath)
       .use(remarkRehype, { allowDangerousHtml: true })
-      .use(rehypeKatex)
+      .use(rehypeKatex, {
+        strict: false,
+        trust: true,
+        throwOnError: false,
+      })
       .use(rehypeHighlight)
-      .use(rehypeSanitize)
-      .use(rehypeStringify)
-      .process(markdown);
+      .use(rehypeStringify, { allowDangerousHtml: true })
+      .process(processedMarkdown);
 
-    return String(result);
+    let html = String(result);
+
+    // Replace Mermaid placeholders with actual Mermaid div elements
+    mermaidDiagrams.forEach((diagram, index) => {
+      const placeholder = `<!--MERMAID_${index}-->`;
+      const mermaidDiv = `<div class="mermaid">\n${diagram}\n</div>`;
+      html = html.replace(placeholder, mermaidDiv);
+    });
+
+    return html;
   }
 }

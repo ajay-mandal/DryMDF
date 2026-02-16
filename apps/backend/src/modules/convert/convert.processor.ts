@@ -4,9 +4,22 @@ import { PdfService } from "../pdf/pdf.service";
 import { MarkdownService } from "../markdown/markdown.service";
 import { WebsocketGateway } from "../websocket/websocket.gateway";
 
+interface PdfOptions {
+  format?: string;
+  margins?: {
+    top?: string;
+    right?: string;
+    bottom?: string;
+    left?: string;
+  };
+  showHeaderFooter?: boolean;
+  headerTemplate?: string;
+  footerTemplate?: string;
+}
+
 interface ConvertJobData {
   markdown: string;
-  options?: any;
+  options?: PdfOptions;
   clientId: string;
 }
 

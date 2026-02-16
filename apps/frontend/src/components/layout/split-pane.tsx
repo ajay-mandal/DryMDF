@@ -49,7 +49,7 @@ export function SplitPane({ left, right }: SplitPaneProps) {
 
       {/* Divider */}
       <div
-        className="w-1 bg-slate-200 dark:bg-slate-700 hover:bg-blue-500 dark:hover:bg-blue-600 cursor-col-resize transition-colors flex-shrink-0"
+        className="w-1 bg-slate-200 dark:bg-slate-700 hover:bg-blue-500 dark:hover:bg-blue-600 cursor-col-resize transition-colors shrink-0"
         onMouseDown={handleMouseDown}
       />
 

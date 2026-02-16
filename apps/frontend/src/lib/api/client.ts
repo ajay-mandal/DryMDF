@@ -1,4 +1,5 @@
 import axios, { AxiosInstance } from "axios";
+import type { PdfOptions, JobStatus } from "@/types/pdf";
 
 class ApiClient {
   private client: AxiosInstance;
@@ -46,7 +47,7 @@ class ApiClient {
   async convertToPdf(
     markdown: string,
     clientId: string,
-    options?: any,
+    options?: PdfOptions,
   ): Promise<{ jobId: string; status: string }> {
     const response = await this.client.post("/convert/pdf", {
       markdown,
@@ -56,7 +57,7 @@ class ApiClient {
     return response.data;
   }
 
-  async getPdfStatus(jobId: string): Promise<any> {
+  async getPdfStatus(jobId: string): Promise<JobStatus> {
     const response = await this.client.get(`/convert/pdf/${jobId}`);
     return response.data;
   }

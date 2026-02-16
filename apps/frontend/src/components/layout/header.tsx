@@ -1,9 +1,22 @@
 "use client";
 
 import Link from "next/link";
-import { FileDown, Home } from "lucide-react";
+import { Home } from "lucide-react";
+import { ThemeToggle } from "@/components/theme-toggle";
+import { ExportDialog } from "@/components/export/export-dialog";
+import { PageFormatSelector } from "./page-format-selector";
 
-export function Header() {
+interface HeaderProps {
+  filename?: string;
+  onExport?: (filename: string) => void;
+  showExport?: boolean;
+}
+
+export function Header({
+  filename,
+  onExport,
+  showExport = false,
+}: HeaderProps) {
   return (
     <header className="h-14 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 flex items-center justify-between px-4">
       <div className="flex items-center gap-4">
@@ -16,19 +29,21 @@ export function Header() {
             Dry<span className="text-blue-600 dark:text-blue-400">PDF</span>
           </span>
         </Link>
+        {filename && (
+          <span className="text-sm text-slate-600 dark:text-slate-400">
+            {filename}
+          </span>
+        )}
       </div>
 
       <div className="flex items-center gap-2">
-        <button
-          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md font-medium transition-colors flex items-center gap-2"
-          onClick={() => {
-            // TODO: Implement export
-            console.log("Export clicked");
-          }}
-        >
-          <FileDown className="w-4 h-4" />
-          Export PDF
-        </button>
+        {showExport && (
+          <>
+            <PageFormatSelector />
+            {onExport && <ExportDialog onExport={onExport} />}
+          </>
+        )}
+        <ThemeToggle />
       </div>
     </header>
   );
