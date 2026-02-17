@@ -5,6 +5,8 @@ import type { Browser, PDFOptions } from "puppeteer";
 
 interface PdfGenerationOptions {
   format?: string;
+  pageColor?: string;
+  autoTextContrast?: boolean;
   margins?: {
     top?: string;
     right?: string;
@@ -66,7 +68,7 @@ export class PdfService implements OnModuleInit, OnModuleDestroy {
 
     try {
       // Set content with Mermaid scripts
-      await page.setContent(this.wrapWithMermaid(html), {
+      await page.setContent(this.wrapWithMermaid(html, options), {
         waitUntil: "networkidle0",
         timeout: 30000,
       });
@@ -113,7 +115,10 @@ export class PdfService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  private wrapWithMermaid(html: string): string {
+  private wrapWithMermaid(
+    html: string,
+    options?: PdfGenerationOptions,
+  ): string {
     return `
       <!DOCTYPE html>
       <html>
@@ -130,7 +135,7 @@ export class PdfService implements OnModuleInit, OnModuleDestroy {
               fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
             });
           </script>
-          <style>${this.getBaseStyles()}</style>
+          <style>${this.getBaseStyles(options?.pageColor, options?.autoTextContrast ?? true)}</style>
         </head>
         <body>
           ${html}
@@ -147,19 +152,49 @@ export class PdfService implements OnModuleInit, OnModuleDestroy {
     `;
   }
 
-  private getBaseStyles(): string {
+  private getBaseStyles(
+    pageColor: string = "#ffffff",
+    autoTextContrast: boolean = true,
+  ): string {
+    const normalizedPageColor = this.normalizeHexColor(pageColor);
+    const textColor = autoTextContrast
+      ? this.getContrastTextColor(normalizedPageColor)
+      : "#24292f";
+    const mutedTextColor = autoTextContrast
+      ? this.getMutedTextColor(normalizedPageColor)
+      : "#57606a";
+
     return `
       * {
         box-sizing: border-box;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        background: ${normalizedPageColor};
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+
+      body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        background: ${normalizedPageColor};
+        z-index: -1;
       }
       
       body { 
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
         line-height: 1.6;
-        color: #24292f;
+        color: ${textColor};
         padding: 20px;
         max-width: 100%;
-        background: #ffffff;
+        background: ${normalizedPageColor};
       }
       
       h1, h2, h3, h4, h5, h6 {
@@ -174,7 +209,7 @@ export class PdfService implements OnModuleInit, OnModuleDestroy {
       h3 { font-size: 1.25em; }
       h4 { font-size: 1em; }
       h5 { font-size: 0.875em; }
-      h6 { font-size: 0.85em; color: #57606a; }
+      h6 { font-size: 0.85em; color: ${mutedTextColor}; }
       
       p {
         margin-top: 0;
@@ -261,7 +296,7 @@ export class PdfService implements OnModuleInit, OnModuleDestroy {
       .hljs-code,
       .hljs-comment,
       .hljs-formula {
-        color: #6a737d;
+        color: ${mutedTextColor};
       }
       
       .hljs-name,
@@ -309,7 +344,7 @@ export class PdfService implements OnModuleInit, OnModuleDestroy {
         padding-left: 1em;
         margin-left: 0;
         margin-right: 0;
-        color: #57606a;
+        color: ${mutedTextColor};
       }
       
       table {
@@ -333,7 +368,7 @@ export class PdfService implements OnModuleInit, OnModuleDestroy {
       }
       
       table tr {
-        background-color: #ffffff;
+        background-color: transparent;
         border-top: 1px solid #d0d7de;
       }
       
@@ -368,7 +403,7 @@ export class PdfService implements OnModuleInit, OnModuleDestroy {
         max-width: 100%;
         height: auto;
         box-sizing: content-box;
-        background-color: #ffffff;
+        background-color: transparent;
       }
       
       hr {
@@ -402,5 +437,42 @@ export class PdfService implements OnModuleInit, OnModuleDestroy {
         font-size: 1.1em;
       }
     `;
+  }
+
+  private getContrastTextColor(pageColor: string): string {
+    const normalized = pageColor.replace("#", "");
+    if (!/^[0-9a-fA-F]{6}$/.test(normalized)) {
+      return "#24292f";
+    }
+
+    const red = parseInt(normalized.slice(0, 2), 16);
+    const green = parseInt(normalized.slice(2, 4), 16);
+    const blue = parseInt(normalized.slice(4, 6), 16);
+    const luminance = (0.2126 * red + 0.7152 * green + 0.0722 * blue) / 255;
+
+    return luminance < 0.5 ? "#e2e8f0" : "#24292f";
+  }
+
+  private getMutedTextColor(pageColor: string): string {
+    const normalized = pageColor.replace("#", "");
+    if (!/^[0-9a-fA-F]{6}$/.test(normalized)) {
+      return "#57606a";
+    }
+
+    const red = parseInt(normalized.slice(0, 2), 16);
+    const green = parseInt(normalized.slice(2, 4), 16);
+    const blue = parseInt(normalized.slice(4, 6), 16);
+    const luminance = (0.2126 * red + 0.7152 * green + 0.0722 * blue) / 255;
+
+    return luminance < 0.5 ? "#94a3b8" : "#57606a";
+  }
+
+  private normalizeHexColor(color: string): string {
+    const normalized = color.trim().replace("#", "");
+    if (!/^[0-9a-fA-F]{6}$/.test(normalized)) {
+      return "#ffffff";
+    }
+
+    return `#${normalized.toLowerCase()}`;
   }
 }

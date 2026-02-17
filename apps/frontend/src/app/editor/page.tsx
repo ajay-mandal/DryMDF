@@ -5,54 +5,165 @@ import { SplitPane } from "@/components/layout/split-pane";
 import { MarkdownEditor } from "@/components/editor/markdown-editor";
 import { MarkdownPreview } from "@/components/preview/markdown-preview";
 import { useEditorStore } from "@/stores/editor-store";
+import { useExportStore } from "@/stores/export-store";
+import { apiClient } from "@/lib/api/client";
+import { toast } from "sonner";
 
 export default function EditorPage() {
   const { content } = useEditorStore();
+  const { pdfOptions, setExporting } = useExportStore();
 
-  const handleExport = async (filename: string) => {
+  const ensureExtension = (
+    baseFilename: string,
+    extension: ".pdf" | ".html" | ".md",
+  ) => {
+    return baseFilename.toLowerCase().endsWith(extension)
+      ? baseFilename
+      : `${baseFilename}${extension}`;
+  };
+
+  const downloadBlob = (blob: Blob, downloadName: string) => {
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = downloadName;
+    document.body.appendChild(anchor);
+    anchor.click();
+    document.body.removeChild(anchor);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleExport = async (
+    filename: string,
+    format: "pdf" | "html" | "md",
+  ) => {
+    let pollInterval: NodeJS.Timeout | null = null;
+    let timeoutId: NodeJS.Timeout | null = null;
+
     try {
-      // For now, do a simple client-side PDF generation via print
-      // In the future, this could use the backend API
-      const printWindow = window.open("", "_blank");
-      if (printWindow) {
-        const { parseMarkdown } = await import("@/lib/markdown/parser");
-        const html = await parseMarkdown(content);
+      setExporting(true);
 
-        printWindow.document.write(`
-          <!DOCTYPE html>
-          <html>
-            <head>
-              <meta charset="utf-8">
-              <title>${filename}</title>
-              <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
-              <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
-              <style>
-                body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; padding: 20px; max-width: 800px; margin: 0 auto; }
-                pre { background: #f6f8fa; padding: 16px; border-radius: 6px; overflow-x: auto; }
-                code { font-family: 'Monaco', 'Courier New', monospace; font-size: 0.9em; }
-                table { border-collapse: collapse; width: 100%; margin: 1em 0; }
-                th, td { border: 1px solid #ddd; padding: 8px; }
-                th { background: #f6f8fa; }
-                @media print { body { max-width: 100%; } }
-              </style>
-            </head>
-            <body>${html}</body>
-          </html>
-        `);
-        printWindow.document.close();
-
-        // Trigger print dialog
-        setTimeout(() => {
-          printWindow.print();
-        }, 500);
+      if (format === "md") {
+        const markdownFilename = ensureExtension(filename || "document", ".md");
+        downloadBlob(
+          new Blob([content], {
+            type: "text/markdown;charset=utf-8",
+          }),
+          markdownFilename,
+        );
+        toast.success(`Markdown exported: ${markdownFilename}`);
+        setExporting(false);
+        return;
       }
+
+      if (format === "html") {
+        toast.loading("Generating HTML...", { id: "doc-export" });
+        const { html } = await apiClient.convertToHtml(content);
+        const htmlFilename = ensureExtension(filename || "document", ".html");
+        const htmlDocument = `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"></head><body>${html}</body></html>`;
+
+        downloadBlob(
+          new Blob([htmlDocument], {
+            type: "text/html;charset=utf-8",
+          }),
+          htmlFilename,
+        );
+
+        toast.success(`HTML exported: ${htmlFilename}`, {
+          id: "doc-export",
+        });
+        setExporting(false);
+        return;
+      }
+
+      // Generate a unique client ID for WebSocket tracking
+      const clientId = `client_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+      // Queue the PDF generation job
+      toast.loading("Queuing PDF generation...", { id: "pdf-export" });
+
+      const { jobId } = await apiClient.convertToPdf(
+        content,
+        clientId,
+        pdfOptions,
+      );
+
+      // Poll for job completion
+      toast.loading("Generating PDF...", { id: "pdf-export" });
+
+      pollInterval = setInterval(async () => {
+        try {
+          const status = await apiClient.getPdfStatus(jobId);
+
+          if (status.status === "completed" && status.result) {
+            if (pollInterval) clearInterval(pollInterval);
+            if (timeoutId) clearTimeout(timeoutId);
+
+            toast.loading("Preparing download...", { id: "pdf-export" });
+
+            // Decode base64 PDF and download
+            const pdfData = atob(status.result.buffer);
+            const pdfArray = new Uint8Array(pdfData.length);
+            for (let i = 0; i < pdfData.length; i++) {
+              pdfArray[i] = pdfData.charCodeAt(i);
+            }
+
+            const blob = new Blob([pdfArray], { type: "application/pdf" });
+            const pdfFilename = ensureExtension(filename || "document", ".pdf");
+            downloadBlob(blob, pdfFilename);
+
+            toast.success(`PDF exported successfully: ${pdfFilename}`, {
+              id: "pdf-export",
+              duration: 5000,
+            });
+            setExporting(false);
+          } else if (status.status === "failed") {
+            if (pollInterval) clearInterval(pollInterval);
+            if (timeoutId) clearTimeout(timeoutId);
+            toast.error("PDF generation failed", {
+              id: "pdf-export",
+              description: "There was an error processing your document.",
+            });
+            setExporting(false);
+          }
+        } catch (err) {
+          if (pollInterval) clearInterval(pollInterval);
+          if (timeoutId) clearTimeout(timeoutId);
+          const errorMsg = err instanceof Error ? err.message : "Unknown error";
+          toast.error("Failed to check PDF status", {
+            id: "pdf-export",
+            description: errorMsg || "Unable to communicate with the server.",
+          });
+          setExporting(false);
+        }
+      }, 1000); // Poll every second
+
+      // Timeout after 30 seconds
+      timeoutId = setTimeout(() => {
+        if (pollInterval) {
+          clearInterval(pollInterval);
+          toast.error("PDF generation timed out", {
+            id: "pdf-export",
+            description: "The operation took too long. Please try again.",
+          });
+          setExporting(false);
+        }
+      }, 30000);
     } catch (error) {
-      console.error("Export failed:", error);
+      if (pollInterval) clearInterval(pollInterval);
+      if (timeoutId) clearTimeout(timeoutId);
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error occurred";
+      toast.error("Export failed", {
+        id: "pdf-export",
+        description: errorMessage,
+      });
+      setExporting(false);
     }
   };
 
   return (
-    <div className="h-screen w-screen flex flex-col overflow-hidden bg-slate-50 dark:bg-slate-900">
+    <div className="h-dvh w-full flex flex-col overflow-hidden bg-slate-50 dark:bg-slate-900">
       <Header showExport onExport={handleExport} />
       <div className="flex-1 overflow-hidden">
         <SplitPane left={<MarkdownEditor />} right={<MarkdownPreview />} />

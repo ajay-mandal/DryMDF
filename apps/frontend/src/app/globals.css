@@ -123,3 +123,26 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Prevent Mermaid diagrams from being split across pages */
+.break-inside-avoid {
+  break-inside: avoid;
+  page-break-inside: avoid;
+  -webkit-column-break-inside: avoid;
+}
+
+/* Print styles for PDF preview */
+@media print {
+  .pdf-page {
+    box-shadow: none !important;
+    margin: 0 !important;
+    page-break-after: always;
+  }
+  .page-break-indicator {
+    display: none !important;
+  }
+  .break-inside-avoid {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+}

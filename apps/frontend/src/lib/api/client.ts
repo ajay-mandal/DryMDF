@@ -1,4 +1,5 @@
 import axios, { AxiosInstance } from "axios";
+import { toast } from "sonner";
 import type { PdfOptions, JobStatus } from "@/types/pdf";
 
 class ApiClient {
@@ -28,11 +29,16 @@ class ApiClient {
       (response) => response,
       (error) => {
         if (error.response) {
-          // Server responded with error
+          // Server responded with error - log for debugging
           console.error("API Error:", error.response.data);
         } else if (error.request) {
-          // Request made but no response
+          // Request made but no response - likely network issue
           console.error("Network Error:", error.message);
+          toast.error("Network error", {
+            description:
+              "Unable to connect to the server. Please check your connection.",
+            duration: 4000,
+          });
         }
         return Promise.reject(error);
       },

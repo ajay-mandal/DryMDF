@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 
 interface SplitPaneProps {
   left: React.ReactNode;
@@ -10,60 +10,104 @@ interface SplitPaneProps {
 export function SplitPane({ left, right }: SplitPaneProps) {
   const [leftWidth, setLeftWidth] = useState(50); // percentage
   const [isDragging, setIsDragging] = useState(false);
+  const [isMobileLayout, setIsMobileLayout] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  const handleMouseDown = () => {
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
     setIsDragging(true);
   };
 
-  const handleMouseUp = () => {
-    setIsDragging(false);
-  };
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobileLayout(window.innerWidth < 1024);
+    };
 
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!isDragging) return;
+    handleResize();
+    window.addEventListener("resize", handleResize);
 
-    const container = e.currentTarget as HTMLElement;
-    const rect = container.getBoundingClientRect();
-    const newLeftWidth = ((e.clientX - rect.left) / rect.width) * 100;
+    return () => {
+      window.removeEventListener("resize", handleResize);
+    };
+  }, []);
 
-    // Constrain between 20% and 80%
-    if (newLeftWidth >= 20 && newLeftWidth <= 80) {
-      setLeftWidth(newLeftWidth);
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isDragging || isMobileLayout || !containerRef.current) return;
+
+      const rect = containerRef.current.getBoundingClientRect();
+      const newLeftWidth = ((e.clientX - rect.left) / rect.width) * 100;
+
+      // Constrain between 25% and 75%
+      if (newLeftWidth >= 25 && newLeftWidth <= 75) {
+        setLeftWidth(newLeftWidth);
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+    };
+
+    if (isDragging && !isMobileLayout) {
+      document.addEventListener("mousemove", handleMouseMove);
+      document.addEventListener("mouseup", handleMouseUp);
+      document.body.style.cursor = "col-resize";
+      document.body.style.userSelect = "none";
     }
-  };
+
+    return () => {
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+  }, [isDragging, isMobileLayout]);
 
   return (
     <div
-      className="flex h-full w-full relative"
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
-      onMouseLeave={handleMouseUp}
+      ref={containerRef}
+      className={`relative h-full w-full ${isMobileLayout ? "flex flex-col" : "flex"}`}
     >
       {/* Left Pane */}
       <div
         className="h-full overflow-hidden"
-        style={{ width: `${leftWidth}%` }}
+        style={
+          isMobileLayout
+            ? { height: "50%", width: "100%" }
+            : { width: `calc(${leftWidth}% - 4px)` }
+        }
       >
         {left}
       </div>
 
-      {/* Divider */}
-      <div
-        className="w-1 bg-slate-200 dark:bg-slate-700 hover:bg-blue-500 dark:hover:bg-blue-600 cursor-col-resize transition-colors shrink-0"
-        onMouseDown={handleMouseDown}
-      />
+      {/* Divider with gap */}
+      {!isMobileLayout && (
+        <div
+          className="flex items-center justify-center shrink-0"
+          style={{ width: "8px" }}
+        >
+          <div
+            className="w-1 h-full bg-slate-300 dark:bg-slate-600 hover:bg-blue-500 dark:hover:bg-blue-400 cursor-col-resize transition-colors active:bg-blue-600 dark:active:bg-blue-500"
+            onMouseDown={handleMouseDown}
+          />
+        </div>
+      )}
 
       {/* Right Pane */}
       <div
         className="h-full overflow-hidden"
-        style={{ width: `${100 - leftWidth}%` }}
+        style={
+          isMobileLayout
+            ? { height: "50%", width: "100%" }
+            : { width: `calc(${100 - leftWidth}% - 4px)` }
+        }
       >
         {right}
       </div>
 
       {/* Drag overlay */}
-      {isDragging && (
-        <div className="absolute inset-0 cursor-col-resize z-50" />
+      {isDragging && !isMobileLayout && (
+        <div className="fixed inset-0 cursor-col-resize z-50" />
       )}
     </div>
   );

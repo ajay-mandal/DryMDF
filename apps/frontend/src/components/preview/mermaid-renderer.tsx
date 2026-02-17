@@ -1,63 +1,107 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import mermaid from "mermaid";
 
 interface MermaidRendererProps {
   chart: string;
   id: string;
+  forceDarkMode?: boolean;
 }
 
-export function MermaidRenderer({ chart, id }: MermaidRendererProps) {
+export function MermaidRenderer({
+  chart,
+  id,
+  forceDarkMode,
+}: MermaidRendererProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [svg, setSvg] = useState<string>("");
+  const [error, setError] = useState<string | null>(null);
+
+  // Detect initial dark mode and listen for changes
   useEffect(() => {
-    mermaid.initialize({
-      startOnLoad: false,
-      theme: "default",
-      securityLevel: "strict",
-      fontFamily: "inherit",
+    const updateTheme = () => {
+      if (typeof forceDarkMode === "boolean") {
+        setIsDarkMode(forceDarkMode);
+        return;
+      }
+      setIsDarkMode(document.documentElement.classList.contains("dark"));
+    };
+
+    // Set initial theme
+    updateTheme();
+
+    // Watch for theme changes
+    const observer = new MutationObserver(updateTheme);
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["class"],
     });
 
-    const renderChart = async () => {
-      const container = document.getElementById(`mermaid-container-${id}`);
-      if (!container || !chart) return;
+    return () => observer.disconnect();
+  }, [forceDarkMode]);
 
-      // Clear the container first
-      container.innerHTML = "";
+  useEffect(() => {
+    let cancelled = false;
+
+    const renderChart = async () => {
+      if (!chart || !containerRef.current) return;
 
       try {
-        // Use a unique ID for each render to avoid caching issues
-        const uniqueId = `mermaid-svg-${id}-${Date.now()}`;
-        const { svg } = await mermaid.render(uniqueId, chart);
+        // Initialize mermaid with current theme
+        mermaid.initialize({
+          startOnLoad: false,
+          theme: isDarkMode ? "dark" : "default",
+          securityLevel: "loose",
+          fontFamily: "inherit",
+        });
 
-        // Check if container still exists before updating
-        const currentContainer = document.getElementById(
-          `mermaid-container-${id}`,
-        );
-        if (currentContainer) {
-          currentContainer.innerHTML = svg;
+        // Generate unique ID for this render
+        const uniqueId = `mermaid-${id}-${Date.now()}`;
+
+        // Render the chart
+        const { svg: renderedSvg } = await mermaid.render(uniqueId, chart);
+
+        // Only update if component hasn't been unmounted
+        if (!cancelled) {
+          setSvg(renderedSvg);
+          setError(null);
         }
       } catch (err) {
         console.error("Mermaid render error:", err);
-        const errorMessage =
-          err instanceof Error ? err.message : "Unknown error";
-
-        const currentContainer = document.getElementById(
-          `mermaid-container-${id}`,
-        );
-        if (currentContainer) {
-          currentContainer.innerHTML = `<pre class="text-red-500 text-sm p-4 bg-red-50 dark:bg-red-900/20 rounded">Invalid Mermaid syntax:\n${errorMessage}</pre>`;
+        if (!cancelled) {
+          const errorMessage =
+            err instanceof Error ? err.message : "Unknown error";
+          setError(errorMessage);
+          setSvg("");
         }
       }
     };
 
-    // Small delay to ensure container is in DOM
-    const timer = setTimeout(renderChart, 100);
+    renderChart();
 
     return () => {
-      clearTimeout(timer);
+      cancelled = true;
     };
-  }, [chart, id]);
+  }, [chart, id, isDarkMode]);
 
-  // This component doesn't render anything directly - it renders into existing containers
-  return null;
+  if (error) {
+    return (
+      <div className="my-6 flex justify-center" id={`mermaid-container-${id}`}>
+        <pre className="text-red-500 text-sm p-4 bg-red-50 dark:bg-red-900/20 rounded border border-red-200 dark:border-red-800">
+          Invalid Mermaid syntax:\n{error}
+        </pre>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      ref={containerRef}
+      id={`mermaid-container-${id}`}
+      className="my-6 flex justify-center"
+      dangerouslySetInnerHTML={{ __html: svg }}
+    />
+  );
 }

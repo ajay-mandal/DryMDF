@@ -1,5 +1,7 @@
 export interface PdfOptions {
-  format?: "a4" | "letter" | "legal";
+  format?: "a3" | "a4" | "legal";
+  pageColor?: string;
+  autoTextContrast?: boolean;
   margins?: {
     top?: string;
     right?: string;

@@ -13,8 +13,8 @@ import {
 import { useExportStore } from "@/stores/export-store";
 
 const PAGE_FORMATS = [
-  { value: "a4", label: "A4", dimensions: "210 × 297 mm" },
-  { value: "letter", label: "Letter", dimensions: '8.5" × 11"' },
+  { value: "a3", label: "A3", dimensions: '11.69" × 16.54"' },
+  { value: "a4", label: "A4", dimensions: '8.27" × 11.69"' },
   { value: "legal", label: "Legal", dimensions: '8.5" × 14"' },
 ] as const;
 
@@ -31,10 +31,12 @@ export function PageFormatSelector() {
         <Button
           variant="outline"
           size="sm"
-          className="h-9 gap-2 text-xs font-medium"
+          className="h-9 gap-1.5 px-2 sm:px-3 text-xs font-medium"
         >
           <FileText className="h-4 w-4" />
-          <span>{currentFormat?.label || "A4"}</span>
+          <span className="hidden min-[420px]:inline">
+            {currentFormat?.label || "A4"}
+          </span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-48">

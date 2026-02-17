@@ -15,6 +15,8 @@ interface ExportStore {
 
 const defaultPdfOptions: PdfOptions = {
   format: "a4",
+  pageColor: "#ffffff",
+  autoTextContrast: true,
   margins: {
     top: "20mm",
     right: "20mm",

@@ -6,6 +6,7 @@ import {
   IsBoolean,
   MaxLength,
   MinLength,
+  IsHexColor,
 } from "class-validator";
 import { Type } from "class-transformer";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
@@ -34,13 +35,29 @@ class MarginsDto {
 
 class PdfOptionsDto {
   @ApiPropertyOptional({
-    enum: ["a4", "letter", "legal"],
+    enum: ["a3", "a4", "legal"],
     default: "a4",
     description: "Page format",
   })
-  @IsEnum(["a4", "letter", "legal"])
+  @IsEnum(["a3", "a4", "legal"])
   @IsOptional()
-  format?: "a4" | "letter" | "legal";
+  format?: "a3" | "a4" | "legal";
+
+  @ApiPropertyOptional({
+    example: "#ffffff",
+    description: "PDF page background color",
+  })
+  @IsHexColor()
+  @IsOptional()
+  pageColor?: string;
+
+  @ApiPropertyOptional({
+    default: true,
+    description: "Automatically set text color contrast based on page color",
+  })
+  @IsBoolean()
+  @IsOptional()
+  autoTextContrast?: boolean;
 
   @ApiPropertyOptional({
     type: MarginsDto,
