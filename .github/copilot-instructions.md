@@ -56,7 +56,7 @@ Build a production-ready, open-source web application that allows users to:
 ```
 drymdf/
 ├── apps/
-│   ├── web/                             # Next.js Frontend
+│   ├── frontend/                        # Next.js Frontend
 │   │   ├── src/
 │   │   │   ├── app/
 │   │   │   │   ├── (editor)/
@@ -125,7 +125,7 @@ drymdf/
 │   │   ├── tsconfig.json
 │   │   └── package.json
 │   │
-│   └── api/                             # NestJS Backend
+│   └── backend/                         # NestJS Backend
 │       ├── src/
 │       │   ├── main.ts                  # Application entry
 │       │   ├── app.module.ts            # Root module
@@ -253,6 +253,98 @@ drymdf/
 4. **Imports**
    - Use absolute imports with `@/` alias
    - Group imports: React → External → Internal → Types → Styles
+
+### Senior Frontend Code Standards (Mandatory)
+
+Use these rules for every frontend implementation. Prioritize maintainability, clarity, and production readiness over quick hacks.
+
+1. **Architecture & Ownership**
+
+- Keep components focused on one responsibility.
+- Extract reusable logic into hooks/utilities instead of duplicating code.
+- Keep page-level orchestration in route components; keep UI logic in feature components.
+- Avoid hidden coupling between stores/components.
+
+2. **Type Safety First**
+
+- No `any` unless explicitly documented and unavoidable.
+- Model domain data with explicit interfaces and narrow unions.
+- Type all props, callbacks, async return values, and state transitions.
+- Validate external input boundaries (API responses, URL params, file uploads).
+
+3. **React Quality Bar**
+
+- Prefer derived state over duplicated state.
+- Use `useMemo`/`useCallback` only when they provide clear stability/perf benefits.
+- Keep effects minimal, deterministic, and cleanup-safe.
+- Never put expensive computation directly in render paths.
+
+4. **UI/UX & Accessibility**
+
+- Every interactive element must be keyboard-accessible and have clear focus states.
+- Use semantic HTML and ARIA only when native semantics are insufficient.
+- Ensure loading, empty, and error states are present for async UI.
+- Maintain WCAG-friendly contrast and readable typography in both light/dark themes.
+
+5. **Performance & Scalability**
+
+- Debounce/throttle expensive operations tied to typing/scrolling.
+- Avoid unnecessary rerenders through stable props and state locality.
+- Lazy-load heavy/rarely used UI where practical.
+- Keep bundle impact in mind when adding dependencies.
+
+6. **Styling Discipline**
+
+- Use only design-system tokens/components (Tailwind + shadcn primitives).
+- Do not hardcode ad-hoc colors/shadows unless approved by project theme rules.
+- Keep style logic predictable; avoid deeply nested conditional class composition.
+- Ensure dark mode parity for all new UI states.
+
+7. **Testing & Reliability**
+
+- Add or update tests for non-trivial logic changes.
+- Cover happy path + key edge cases (invalid input, network failure, empty data).
+- Prefer testing behavior and outcomes over implementation details.
+
+8. **PR-Ready Code Expectations**
+
+- Keep diffs focused and avoid unrelated refactors.
+- Name variables/functions to express intent clearly.
+- Remove dead code, temporary logs, and commented-out blocks.
+- Document non-obvious decisions with concise comments or docs updates.
+
+9. **Library-First Development (Mandatory)**
+
+- Prefer mature, actively maintained libraries before building custom solutions for complex problems.
+- Do not build complicated systems from scratch when a trusted library/service already solves it.
+- Choose libraries that improve readability, maintainability, and long-term support.
+- Favor ecosystem-standard tools and patterns over niche or unproven implementations.
+
+10. **External Service Integration Standards**
+
+- Always follow official documentation and community best practices when integrating external services.
+- Use standard SDKs/clients, typed contracts, retries/timeouts, and structured error handling.
+- Keep integration concerns isolated behind service modules/adapters instead of spreading calls across UI code.
+- Validate and sanitize all external data at boundaries.
+
+11. **Code Separation for Multi-Feature Work**
+
+- When implementing multiple features, separate logic into clear blocks/modules (by feature responsibility).
+- Split large functions into smaller focused functions with explicit names and typed inputs/outputs.
+- Keep each feature path independently testable and avoid entangling unrelated concerns in one function.
+- Use predictable file boundaries (components, hooks, services, utils) to keep code easy to navigate.
+
+### Frontend Done Checklist
+
+- [ ] Strict typing preserved (no unbounded `any`)
+- [ ] Loading/empty/error states handled
+- [ ] Keyboard and screen-reader accessibility considered
+- [ ] Light/dark mode visual parity verified
+- [ ] Performance implications reviewed
+- [ ] Tests/docs updated where needed
+- [ ] Mature libraries/services used where appropriate
+- [ ] External integrations follow official/community standards
+- [ ] Multi-feature logic is separated into clear blocks/modules
 
 ### Component Patterns
 
@@ -759,7 +851,7 @@ npm run test:coverage # Coverage report
 
 # App
 NEXT_PUBLIC_APP_URL=http://localhost:3000
-NEXT_PUBLIC_APP_NAME="MD to PDF"
+NEXT_PUBLIC_APP_NAME="DryMDF"
 
 # Rate Limiting (Upstash Redis)
 UPSTASH_REDIS_REST_URL=
