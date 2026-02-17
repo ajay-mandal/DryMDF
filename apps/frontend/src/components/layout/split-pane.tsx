@@ -66,11 +66,11 @@ export function SplitPane({ left, right }: SplitPaneProps) {
   return (
     <div
       ref={containerRef}
-      className={`relative h-full w-full ${isMobileLayout ? "flex flex-col" : "flex"}`}
+      className={`relative h-full min-h-0 w-full ${isMobileLayout ? "flex flex-col" : "flex"}`}
     >
       {/* Left Pane */}
       <div
-        className="h-full overflow-hidden"
+        className="h-full min-h-0 overflow-hidden"
         style={
           isMobileLayout
             ? { height: "50%", width: "100%" }
@@ -95,7 +95,7 @@ export function SplitPane({ left, right }: SplitPaneProps) {
 
       {/* Right Pane */}
       <div
-        className="h-full overflow-hidden"
+        className="h-full min-h-0 overflow-hidden"
         style={
           isMobileLayout
             ? { height: "50%", width: "100%" }

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Header } from "@/components/layout/header";
 import { SplitPane } from "@/components/layout/split-pane";
 import { MarkdownEditor } from "@/components/editor/markdown-editor";
@@ -12,6 +13,9 @@ import { toast } from "sonner";
 export default function EditorPage() {
   const { content } = useEditorStore();
   const { pdfOptions, setExporting } = useExportStore();
+  const [previewMode, setPreviewMode] = useState<"markdown" | "pdf">(
+    "markdown",
+  );
 
   const ensureExtension = (
     baseFilename: string,
@@ -164,9 +168,16 @@ export default function EditorPage() {
 
   return (
     <div className="h-dvh w-full flex flex-col overflow-hidden bg-slate-50 dark:bg-slate-900">
-      <Header showExport onExport={handleExport} />
-      <div className="flex-1 overflow-hidden">
-        <SplitPane left={<MarkdownEditor />} right={<MarkdownPreview />} />
+      <Header
+        showExport
+        onExport={handleExport}
+        showPdfSettings={previewMode === "pdf"}
+      />
+      <div className="flex-1 min-h-0 overflow-hidden">
+        <SplitPane
+          left={<MarkdownEditor />}
+          right={<MarkdownPreview onPreviewModeChange={setPreviewMode} />}
+        />
       </div>
     </div>
   );

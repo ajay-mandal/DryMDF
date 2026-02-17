@@ -11,12 +11,14 @@ interface HeaderProps {
   filename?: string;
   onExport?: (filename: string, format: "pdf" | "html" | "md") => void;
   showExport?: boolean;
+  showPdfSettings?: boolean;
 }
 
 export function Header({
   filename,
   onExport,
   showExport = false,
+  showPdfSettings = false,
 }: HeaderProps) {
   return (
     <header className="min-h-14 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 flex flex-col sm:flex-row sm:items-center sm:justify-between px-3 sm:px-4 py-2 gap-2">
@@ -40,8 +42,12 @@ export function Header({
       <div className="flex items-center gap-2 flex-wrap justify-end w-full sm:w-auto">
         {showExport && (
           <>
-            <PageFormatSelector />
-            <PageColorSelector />
+            {showPdfSettings && (
+              <>
+                <PageFormatSelector />
+                <PageColorSelector />
+              </>
+            )}
             {onExport && <ExportDialog onExport={onExport} />}
           </>
         )}

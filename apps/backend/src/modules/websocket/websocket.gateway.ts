@@ -5,6 +5,7 @@ import {
   OnGatewayConnection,
   OnGatewayDisconnect,
 } from "@nestjs/websockets";
+import { Logger } from "@nestjs/common";
 import { Server, Socket } from "socket.io";
 
 interface JobProgress {
@@ -22,19 +23,35 @@ interface JobProgress {
 export class WebsocketGateway
   implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
 {
+  private readonly logger = new Logger(WebsocketGateway.name);
+
   @WebSocketServer()
   server!: Server;
 
   afterInit() {
-    console.log("✅ WebSocket Gateway initialized");
+    this.logger.log("WebSocket gateway initialized");
   }
 
   handleConnection(client: Socket) {
-    console.log(`🔌 Client connected: ${client.id}`);
+    const sessionId =
+      (client.handshake.auth?.sessionId as string | undefined) ||
+      (client.handshake.query?.sessionId as string | undefined) ||
+      "unknown";
+
+    this.logger.log(
+      `Client connected: id=${client.id}, sessionId=${sessionId}`,
+    );
   }
 
   handleDisconnect(client: Socket) {
-    console.log(`🔌 Client disconnected: ${client.id}`);
+    const sessionId =
+      (client.handshake.auth?.sessionId as string | undefined) ||
+      (client.handshake.query?.sessionId as string | undefined) ||
+      "unknown";
+
+    this.logger.log(
+      `Client disconnected: id=${client.id}, sessionId=${sessionId}`,
+    );
   }
 
   sendProgress(clientId: string, data: JobProgress) {
