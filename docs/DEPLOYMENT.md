@@ -33,13 +33,13 @@ PUPPETEER_ARGS=--no-sandbox,--disable-setuid-sandbox,--disable-dev-shm-usage
 
 ### 3. Add Railway Configuration
 
-Create `railway.json` in `apps/api/`:
+Create `railway.json` in `apps/backend/`:
 
 ```json
 {
   "build": {
     "builder": "NIXPACKS",
-    "buildCommand": "cd ../.. && pnpm install && pnpm turbo run build --filter=@md-to-pdf/api"
+    "buildCommand": "cd ../.. && pnpm install && pnpm turbo run build --filter=@drymdf/backend"
   },
   "deploy": {
     "startCommand": "node dist/main.js",
@@ -63,7 +63,7 @@ railway up
 ```yaml
 services:
   - type: web
-    name: md-to-pdf-api
+    name: drymdf-api
     env: docker
     dockerfilePath: ./docker/Dockerfile.api
     envVars:
@@ -72,21 +72,21 @@ services:
       - key: REDIS_HOST
         fromService:
           type: redis
-          name: md-to-pdf-redis
+          name: drymdf-redis
           property: host
       - key: REDIS_PORT
         fromService:
           type: redis
-          name: md-to-pdf-redis
+          name: drymdf-redis
           property: port
       - key: REDIS_PASSWORD
         fromService:
           type: redis
-          name: md-to-pdf-redis
+          name: drymdf-redis
           property: password
 
   - type: redis
-    name: md-to-pdf-redis
+    name: drymdf-redis
     maxmemoryPolicy: noeviction
 ```
 
@@ -120,10 +120,10 @@ vercel
 
 ```bash
 # Backend
-docker build -f docker/Dockerfile.api -t md-to-pdf-api .
+docker build -f docker/Dockerfile.api -t drymdf-api .
 
 # Frontend
-docker build -f docker/Dockerfile.web -t md-to-pdf-web .
+docker build -f docker/Dockerfile.web -t drymdf-web .
 ```
 
 ### Run with Docker Compose

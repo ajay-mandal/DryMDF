@@ -67,11 +67,21 @@ export class PdfService implements OnModuleInit, OnModuleDestroy {
     const page = await this.browser.newPage();
 
     try {
+      const resolvedMargins = {
+        top: options?.margins?.top || "20mm",
+        right: options?.margins?.right || "20mm",
+        bottom: options?.margins?.bottom || "20mm",
+        left: options?.margins?.left || "20mm",
+      };
+
       // Set content with Mermaid scripts
-      await page.setContent(this.wrapWithMermaid(html, options), {
-        waitUntil: "networkidle0",
-        timeout: 30000,
-      });
+      await page.setContent(
+        this.wrapWithMermaid(html, options, resolvedMargins),
+        {
+          waitUntil: "networkidle0",
+          timeout: 30000,
+        },
+      );
 
       // Give Mermaid more time to initialize
       await page.waitForTimeout(1000);
@@ -95,11 +105,11 @@ export class PdfService implements OnModuleInit, OnModuleDestroy {
 
       const pdfOptions: PDFOptions = {
         format: (options?.format || "a4") as PDFOptions["format"],
-        margin: options?.margins || {
-          top: "20mm",
-          right: "20mm",
-          bottom: "20mm",
-          left: "20mm",
+        margin: {
+          top: "0",
+          right: "0",
+          bottom: "0",
+          left: "0",
         },
         printBackground: true,
         displayHeaderFooter: options?.showHeaderFooter || false,
@@ -118,6 +128,12 @@ export class PdfService implements OnModuleInit, OnModuleDestroy {
   private wrapWithMermaid(
     html: string,
     options?: PdfGenerationOptions,
+    margins?: {
+      top: string;
+      right: string;
+      bottom: string;
+      left: string;
+    },
   ): string {
     return `
       <!DOCTYPE html>
@@ -135,7 +151,7 @@ export class PdfService implements OnModuleInit, OnModuleDestroy {
               fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
             });
           </script>
-          <style>${this.getBaseStyles(options?.pageColor, options?.autoTextContrast ?? true)}</style>
+          <style>${this.getBaseStyles(options?.pageColor, options?.autoTextContrast ?? true, margins)}</style>
         </head>
         <body>
           ${html}
@@ -155,8 +171,20 @@ export class PdfService implements OnModuleInit, OnModuleDestroy {
   private getBaseStyles(
     pageColor: string = "#ffffff",
     autoTextContrast: boolean = true,
+    margins?: {
+      top: string;
+      right: string;
+      bottom: string;
+      left: string;
+    },
   ): string {
     const normalizedPageColor = this.normalizeHexColor(pageColor);
+    const resolvedMargins = {
+      top: margins?.top || "20mm",
+      right: margins?.right || "20mm",
+      bottom: margins?.bottom || "20mm",
+      left: margins?.left || "20mm",
+    };
     const textColor = autoTextContrast
       ? this.getContrastTextColor(normalizedPageColor)
       : "#24292f";
@@ -192,7 +220,10 @@ export class PdfService implements OnModuleInit, OnModuleDestroy {
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
         line-height: 1.6;
         color: ${textColor};
-        padding: 20px;
+        padding-top: calc(${resolvedMargins.top} + 20px);
+        padding-right: calc(${resolvedMargins.right} + 20px);
+        padding-bottom: calc(${resolvedMargins.bottom} + 20px);
+        padding-left: calc(${resolvedMargins.left} + 20px);
         max-width: 100%;
         background: ${normalizedPageColor};
       }

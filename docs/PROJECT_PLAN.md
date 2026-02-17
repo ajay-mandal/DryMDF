@@ -1,4 +1,4 @@
-# MD-to-PDF Web Application - Project Plan
+# DryMDF Web Application - Project Plan
 
 ## Executive Summary
 
@@ -82,7 +82,7 @@ graph TD
 
         subgraph "apps/"
             Web[apps/web - Next.js]
-            API[apps/api - NestJS]
+            API[apps/backend - NestJS]
         end
 
         subgraph "packages/"
@@ -402,7 +402,7 @@ stateDiagram-v2
 
 ```mermaid
 gantt
-    title MD-to-PDF Development Timeline
+    title DryMDF Development Timeline
     dateFormat  YYYY-MM-DD
 
     section Phase 1: Foundation
@@ -460,8 +460,8 @@ gantt
 **Commands:**
 
 ```bash
-npx create-turbo@latest md-to-pdf
-cd md-to-pdf
+npx create-turbo@latest drymdf
+cd drymdf
 pnpm install
 ```
 
@@ -494,7 +494,7 @@ pnpm add zustand zod @tanstack/react-query mermaid socket.io-client
 
 **Tasks:**
 
-- [ ] Initialize NestJS in apps/api
+- [ ] Initialize NestJS in apps/backend
 - [ ] Configure TypeScript strict mode
 - [ ] Set up configuration module
 - [ ] Configure Swagger/OpenAPI
@@ -504,7 +504,7 @@ pnpm add zustand zod @tanstack/react-query mermaid socket.io-client
 **Commands:**
 
 ```bash
-cd apps/api
+cd apps/backend
 nest new . --package-manager pnpm
 pnpm add @nestjs/config @nestjs/swagger @nestjs/throttler
 pnpm add @nestjs/bull bull ioredis
@@ -625,7 +625,7 @@ const MermaidRenderer = ({ code }) => {
 **NestJS Module Structure:**
 
 ```typescript
-// apps/api/src/modules/pdf/pdf.module.ts
+// apps/backend/src/modules/pdf/pdf.module.ts
 @Module({
   providers: [PdfService],
   exports: [PdfService],
@@ -647,7 +647,7 @@ export class PdfModule {}
 **Queue Configuration:**
 
 ```typescript
-// apps/api/src/modules/queue/queue.module.ts
+// apps/backend/src/modules/queue/queue.module.ts
 @Module({
   imports: [
     BullModule.forRoot({
@@ -672,7 +672,7 @@ export class QueueModule {}
 **WebSocket Gateway:**
 
 ```typescript
-// apps/api/src/modules/websocket/websocket.gateway.ts
+// apps/backend/src/modules/websocket/websocket.gateway.ts
 @WebSocketGateway({ cors: true })
 export class WebsocketGateway {
   @WebSocketServer() server: Server;
@@ -890,7 +890,7 @@ services:
     build: ./apps/web
     ports: ["3000:3000"]
   api:
-    build: ./apps/api
+    build: ./apps/backend
     ports: ["4000:4000"]
   redis:
     image: redis:alpine
@@ -923,13 +923,13 @@ services:
 
 ```env
 # Frontend (.env)
-NEXT_PUBLIC_API_URL=https://api.md-to-pdf.com
-NEXT_PUBLIC_WS_URL=wss://api.md-to-pdf.com
+NEXT_PUBLIC_API_URL=https://api.drymdf.com
+NEXT_PUBLIC_WS_URL=wss://api.drymdf.com
 
 # Backend (.env)
 REDIS_URL=redis://...
-AWS_S3_BUCKET=md-to-pdf-files
-CORS_ORIGIN=https://md-to-pdf.com
+AWS_S3_BUCKET=drymdf-files
+CORS_ORIGIN=https://drymdf.com
 ```
 
 ### 5.5 Launch & Monitoring (1 day)
@@ -1009,7 +1009,7 @@ sequenceDiagram
 ### NestJS DTO Examples
 
 ```typescript
-// apps/api/src/modules/convert/dto/convert-pdf.dto.ts
+// apps/backend/src/modules/convert/dto/convert-pdf.dto.ts
 import { IsString, IsOptional, ValidateNested, IsEnum } from "class-validator";
 import { Type } from "class-transformer";
 
@@ -1150,7 +1150,7 @@ export class ConvertPdfDto {
 
 ## Conclusion
 
-This project plan provides a structured approach to building a production-ready MD-to-PDF application with:
+This project plan provides a structured approach to building a production-ready DryMDF application with:
 
 - **Next.js 14** frontend with CodeMirror 6 editor
 - **NestJS** backend with Bull queues and WebSocket

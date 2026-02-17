@@ -1,7 +1,7 @@
 {
-  "name": "@drypdf/backend",
+  "name": "@drymdf/backend",
   "version": "0.1.0",
-  "description": "NestJS backend API for DryPDF converter",
+  "description": "NestJS backend API for DryMDF converter",
   "private": true,
   "license": "MIT",
   "scripts": {

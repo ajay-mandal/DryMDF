@@ -29,7 +29,7 @@ export function Header({
         >
           <Home className="w-5 h-5" />
           <span className="font-bold text-lg">
-            Dry<span className="text-blue-600 dark:text-blue-400">PDF</span>
+            Dry<span className="text-blue-600 dark:text-blue-400">MDF</span>
           </span>
         </Link>
         {filename && (

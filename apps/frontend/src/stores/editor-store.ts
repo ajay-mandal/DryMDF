@@ -20,7 +20,7 @@ const defaultSettings: EditorSettings = {
   autoSave: true,
 };
 
-const defaultContent = `# Welcome to DryPDF
+const defaultContent = `# Welcome to DryMDF
 
 Write your **Markdown** here and see it rendered in real-time!
 
@@ -69,7 +69,7 @@ export const useEditorStore = create<EditorStore>()(
       resetContent: () => set({ content: defaultContent }),
     }),
     {
-      name: "drypdf-editor-storage",
+      name: "drymdf-editor-storage",
       partialize: (state) => ({
         content: state.content,
         settings: state.settings,

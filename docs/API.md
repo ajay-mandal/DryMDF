@@ -1,10 +1,10 @@
-# MD-to-PDF API Documentation
+# DryMDF API Documentation
 
 ## Base URL
 
 ```
 Development: http://localhost:4000/api
-Production: https://api.md-to-pdf.com/api
+Production: https://api.drymdf.com/api
 ```
 
 ## Interactive Documentation

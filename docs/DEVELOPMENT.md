@@ -23,10 +23,10 @@ Or manually:
 pnpm install
 
 # Copy environment file
-cp apps/api/.env.example apps/api/.env
+cp apps/backend/.env.example apps/backend/.env
 
 # Build shared packages
-pnpm --filter @md-to-pdf/shared build
+pnpm --filter @drymdf/shared build
 
 # Set up git hooks
 pnpm prepare
@@ -39,8 +39,8 @@ pnpm prepare
 pnpm dev
 
 # Or start individually
-pnpm --filter @md-to-pdf/api dev    # Backend only
-pnpm --filter @md-to-pdf/web dev    # Frontend only
+pnpm --filter @drymdf/backend dev    # Backend only
+pnpm --filter web dev    # Frontend only
 ```
 
 ### Start Redis
@@ -70,7 +70,7 @@ sudo systemctl start redis
 ### Project Structure
 
 ```
-md-to-pdf/
+drymdf/
 ├── apps/
 │   ├── api/                    # NestJS Backend
 │   │   ├── src/
@@ -107,7 +107,7 @@ modules/
 #### Creating a New Module
 
 ```bash
-cd apps/api
+cd apps/backend
 nest generate module modules/feature-name
 nest generate controller modules/feature-name
 nest generate service modules/feature-name
@@ -155,16 +155,16 @@ async create(dto: CreateFeatureDto) {
 
 ```bash
 # Unit tests
-pnpm --filter @md-to-pdf/api test
+pnpm --filter @drymdf/backend test
 
 # E2E tests
-pnpm --filter @md-to-pdf/api test:e2e
+pnpm --filter @drymdf/backend test:e2e
 
 # Test coverage
-pnpm --filter @md-to-pdf/api test:cov
+pnpm --filter @drymdf/backend test:cov
 
 # Watch mode
-pnpm --filter @md-to-pdf/api test:watch
+pnpm --filter @drymdf/backend test:watch
 ```
 
 #### Debugging
@@ -177,7 +177,7 @@ VS Code launch configuration:
   "request": "launch",
   "name": "Debug API",
   "runtimeExecutable": "pnpm",
-  "runtimeArgs": ["--filter", "@md-to-pdf/api", "start:debug"],
+  "runtimeArgs": ["--filter", "@drymdf/backend", "start:debug"],
   "console": "integratedTerminal",
   "restart": true,
   "protocol": "inspector"
@@ -358,7 +358,7 @@ pnpm format:check
 pnpm build
 
 # Build specific package
-pnpm --filter @md-to-pdf/api build
+pnpm --filter @drymdf/backend build
 
 # Type check
 pnpm type-check
@@ -419,13 +419,13 @@ PORT=4001
 
 ### Module Not Found
 
-**Error**: `Cannot find module '@md-to-pdf/shared'`
+**Error**: `Cannot find module '@drymdf/shared'`
 
 **Solution**:
 
 ```bash
 # Build shared package
-pnpm --filter @md-to-pdf/shared build
+pnpm --filter @drymdf/shared build
 
 # Reinstall dependencies
 rm -rf node_modules
@@ -463,7 +463,7 @@ pnpm turbo clean
 pnpm dlx bull-board
 
 # Generate API client types
-pnpm --filter @md-to-pdf/api swagger:generate
+pnpm --filter @drymdf/backend swagger:generate
 
 # Database studio (future)
 pnpm prisma studio

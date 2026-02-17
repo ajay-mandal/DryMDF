@@ -38,9 +38,9 @@ async function bootstrap() {
 
   // Swagger documentation
   const config = new DocumentBuilder()
-    .setTitle("DryPDF API")
+    .setTitle("DryMDF API")
     .setDescription(
-      "API documentation for DryPDF - Markdown to PDF converter service with Mermaid support",
+      "API documentation for DryMDF - Markdown to PDF converter service with Mermaid support",
     )
     .setVersion("1.0")
     .addTag("convert", "Markdown conversion endpoints")

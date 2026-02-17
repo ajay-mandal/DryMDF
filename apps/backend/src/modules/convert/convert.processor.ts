@@ -6,6 +6,8 @@ import { WebsocketGateway } from "../websocket/websocket.gateway";
 
 interface PdfOptions {
   format?: string;
+  pageColor?: string;
+  autoTextContrast?: boolean;
   margins?: {
     top?: string;
     right?: string;

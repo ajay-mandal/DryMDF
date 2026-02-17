@@ -1,4 +1,4 @@
-# MD-to-PDF
+# DryMDF
 
 Production-ready, open-source web application for converting Markdown to PDF with live preview and Mermaid diagram support.
 
@@ -36,7 +36,7 @@ Production-ready, open-source web application for converting Markdown to PDF wit
 ## Project Structure
 
 ```
-md-to-pdf/
+drymdf/
 ├── apps/
 │   ├── web/          # Next.js Frontend
 │   └── api/          # NestJS Backend

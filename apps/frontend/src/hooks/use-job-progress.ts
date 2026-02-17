@@ -15,6 +15,12 @@ export function useJobProgress(clientId: string) {
     const socket = io(
       (process.env.NEXT_PUBLIC_WS_URL as string) || "ws://localhost:4000",
       {
+        auth: {
+          sessionId: clientId,
+        },
+        query: {
+          sessionId: clientId,
+        },
         transports: ["websocket"],
         reconnection: true,
         reconnectionAttempts: 5,

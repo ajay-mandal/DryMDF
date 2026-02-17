@@ -1,4 +1,4 @@
-# MD-to-PDF Web Application - Copilot Instructions
+# DryMDF Web Application - Copilot Instructions
 
 ## Project Overview
 
@@ -54,7 +54,7 @@ Build a production-ready, open-source web application that allows users to:
 ## Project Structure
 
 ```
-md-to-pdf/
+drymdf/
 ├── apps/
 │   ├── web/                             # Next.js Frontend
 │   │   ├── src/
@@ -467,7 +467,7 @@ export function MermaidRenderer({ chart, id }: MermaidRendererProps) {
 **NestJS PDF Service:**
 
 ```typescript
-// apps/api/src/modules/pdf/pdf.service.ts
+// apps/backend/src/modules/pdf/pdf.service.ts
 import { Injectable } from "@nestjs/common";
 import * as puppeteer from "puppeteer";
 import { PdfOptionsDto } from "./dto/pdf-options.dto";
@@ -564,7 +564,7 @@ export class PdfService {
 **Bull Queue Processor:**
 
 ```typescript
-// apps/api/src/modules/convert/convert.processor.ts
+// apps/backend/src/modules/convert/convert.processor.ts
 import { Processor, Process, OnQueueProgress } from "@nestjs/bull";
 import { Job } from "bull";
 import { PdfService } from "../pdf/pdf.service";
@@ -610,7 +610,7 @@ export class ConvertProcessor {
 **Convert Controller:**
 
 ```typescript
-// apps/api/src/modules/convert/convert.controller.ts
+// apps/backend/src/modules/convert/convert.controller.ts
 import { Controller, Post, Body, Res } from "@nestjs/common";
 import { InjectQueue } from "@nestjs/bull";
 import { Queue } from "bull";

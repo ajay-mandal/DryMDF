@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "DryPDF - Markdown to PDF Converter",
+  title: "DryMDF - Markdown to PDF Converter",
   description:
     "Modern Markdown to PDF converter with live preview and Mermaid diagram support",
 };

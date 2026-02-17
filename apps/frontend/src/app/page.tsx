@@ -10,7 +10,7 @@ export default function Home() {
       <main className="max-w-4xl mx-auto text-center space-y-8">
         <div className="space-y-4">
           <h1 className="text-6xl font-bold tracking-tight text-slate-900 dark:text-white">
-            Dry<span className="text-blue-600 dark:text-blue-400">PDF</span>
+            Dry<span className="text-blue-600 dark:text-blue-400">MDF</span>
           </h1>
           <p className="text-xl text-slate-600 dark:text-slate-300 max-w-2xl mx-auto">
             Modern Markdown to PDF converter with live preview, Mermaid diagram
@@ -26,7 +26,7 @@ export default function Home() {
             Start Writing
           </Link>
           <a
-            href="https://github.com/ajay-mandal/drypdf"
+            href="https://github.com/ajay-mandal/drymdf"
             target="_blank"
             rel="noopener noreferrer"
             className="px-8 py-3 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-900 dark:text-white rounded-lg font-medium transition-colors shadow-lg hover:shadow-xl border border-slate-200 dark:border-slate-700"

@@ -1,8 +1,8 @@
 {
-  "name": "drypdf-monorepo",
+  "name": "drymdf-monorepo",
   "version": "0.1.0",
   "private": true,
-  "description": "DryPDF - Modern Markdown to PDF converter with live preview and Mermaid support",
+  "description": "DryMDF - Modern Markdown to PDF converter with live preview and Mermaid support",
   "author": "Ajay Mandal",
   "license": "MIT",
   "scripts": {

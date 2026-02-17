@@ -38,6 +38,10 @@ export class WebsocketGateway
       (client.handshake.query?.sessionId as string | undefined) ||
       "unknown";
 
+    if (sessionId !== "unknown") {
+      client.join(sessionId);
+    }
+
     this.logger.log(
       `Client connected: id=${client.id}, sessionId=${sessionId}`,
     );

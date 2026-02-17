@@ -214,6 +214,7 @@ export function MarkdownPreviewPane({ content }: MarkdownPreviewPaneProps) {
 
 [data-md-preview-pane="true"] {
   --md-hljs-comment: #6b7280;
+  --md-hljs-neutral: #334155;
   --md-hljs-keyword: #c7254e;
   --md-hljs-string: #2f855a;
   --md-hljs-number: #7c3aed;
@@ -224,6 +225,7 @@ export function MarkdownPreviewPane({ content }: MarkdownPreviewPaneProps) {
 
 .dark [data-md-preview-pane="true"] {
   --md-hljs-comment: #75715e;
+  --md-hljs-neutral: #e2e8f0;
   --md-hljs-keyword: #f92672;
   --md-hljs-string: #e6db74;
   --md-hljs-number: #ae81ff;
@@ -234,7 +236,18 @@ export function MarkdownPreviewPane({ content }: MarkdownPreviewPaneProps) {
 
 [data-md-preview-pane="true"] .hljs {
   background: hsl(var(--muted)) !important;
-  color: hsl(var(--foreground)) !important;
+  color: var(--md-hljs-neutral) !important;
+}
+
+[data-md-preview-pane="true"] .hljs-subst,
+[data-md-preview-pane="true"] .hljs-operator,
+[data-md-preview-pane="true"] .hljs-punctuation,
+[data-md-preview-pane="true"] .hljs-property,
+[data-md-preview-pane="true"] .hljs-params,
+[data-md-preview-pane="true"] .hljs-variable,
+[data-md-preview-pane="true"] .hljs-variable.language_,
+[data-md-preview-pane="true"] .hljs-title.class_.inherited__ {
+  color: var(--md-hljs-neutral) !important;
 }
 
 [data-md-preview-pane="true"] .hljs-keyword,

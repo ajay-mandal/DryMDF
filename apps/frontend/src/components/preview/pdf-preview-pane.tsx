@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { apiClient } from "@/lib/api/client";
+import { useJobProgress } from "@/hooks/use-job-progress";
 import type { PdfOptions } from "@/types/pdf";
 import {
   DEFAULT_PREVIEW_FORMAT,
@@ -54,6 +55,7 @@ export function PdfPreviewPane({
   const [stage, setStage] = useState("idle");
   const [progress, setProgress] = useState(0);
   const [displayProgress, setDisplayProgress] = useState(0);
+  const [socketClientId, setSocketClientId] = useState("");
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const exactPdfRequestRef = useRef(0);
@@ -63,6 +65,19 @@ export function PdfPreviewPane({
   const isDarkPageColor = isDarkHexColor(
     effectivePdfOptions.pageColor ?? "#ffffff",
   );
+  const { progress: wsProgress } = useJobProgress(socketClientId);
+
+  useEffect(() => {
+    if (!isLoading || !wsProgress) {
+      return;
+    }
+
+    const wsProgressValue = Math.min(Math.max(wsProgress.progress, 0), 100);
+    setProgress((current) =>
+      wsProgressValue > current ? wsProgressValue : current,
+    );
+    setStage(wsProgress.stage || "processing");
+  }, [isLoading, wsProgress]);
 
   useEffect(() => {
     const container = scrollContainerRef.current;
@@ -192,6 +207,8 @@ export function PdfPreviewPane({
 
       try {
         const clientId = `preview-${requestId}-${Date.now()}`;
+        setSocketClientId(clientId);
+
         const queuedJob = await apiClient.convertToPdf(
           request.content,
           clientId,
@@ -238,6 +255,7 @@ export function PdfPreviewPane({
             setProgress(100);
             setStage("completed");
             setIsLoading(false);
+            setSocketClientId("");
             return;
           }
 
@@ -256,6 +274,7 @@ export function PdfPreviewPane({
         setProgress(0);
         setStage("failed");
         setIsLoading(false);
+        setSocketClientId("");
       }
     };
 

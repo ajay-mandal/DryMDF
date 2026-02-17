@@ -1,6 +1,6 @@
-# Contributing to MD-to-PDF
+# Contributing to DryMDF
 
-Thank you for your interest in contributing to MD-to-PDF! This document provides guidelines and instructions for contributing.
+Thank you for your interest in contributing to DryMDF! This document provides guidelines and instructions for contributing.
 
 ## Development Setup
 
@@ -15,8 +15,8 @@ Thank you for your interest in contributing to MD-to-PDF! This document provides
 1. Clone the repository:
 
 ```bash
-git clone https://github.com/yourusername/md-to-pdf.git
-cd md-to-pdf
+git clone https://github.com/yourusername/drymdf.git
+cd drymdf
 ```
 
 2. Install dependencies:
@@ -28,7 +28,7 @@ pnpm install
 3. Set up environment variables:
 
 ```bash
-cp apps/api/.env.example apps/api/.env
+cp apps/backend/.env.example apps/backend/.env
 ```
 
 4. Start Redis (if not already running):
@@ -50,7 +50,7 @@ pnpm dev
 ## Project Structure
 
 ```
-md-to-pdf/
+drymdf/
 ├── apps/
 │   ├── web/          # Next.js Frontend
 │   └── api/          # NestJS Backend

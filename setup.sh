@@ -1,11 +1,11 @@
 #!/bin/bash
 
-# MD-to-PDF Setup Script
+# DryMDF Setup Script
 # This script will set up the development environment
 
 set -e
 
-echo "🚀 Setting up MD-to-PDF development environment..."
+echo "🚀 Setting up DryMDF development environment..."
 
 # Check Node.js version
 if ! command -v node &> /dev/null; then
@@ -40,7 +40,7 @@ if [ ! -f "apps/backend/.env" ]; then
     cp apps/backend/.env.example apps/backend/.env
     echo "✅ Created apps/backend/.env"
 else
-    echo "ℹ️  apps/api/.env already exists"
+    echo "ℹ️  apps/backend/.env already exists"
 fi
 
 # Check Redis
@@ -65,14 +65,14 @@ pnpm prepare || true
 
 # Build shared packages
 echo "🔨 Building shared packages..."
-pnpm --filter @md-to-pdf/shared build
+pnpm --filter @drymdf/shared build
 
 echo ""
 echo "✅ Setup complete!"
 echo ""
 echo "Next steps:"
 echo "  1. Make sure Redis is running"
-echo "  2. Update environment variables in apps/api/.env"
+echo "  2. Update environment variables in apps/backend/.env"
 echo "  3. Run 'pnpm dev' to start development servers"
 echo ""
 echo "Development URLs:"
