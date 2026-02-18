@@ -26,11 +26,15 @@ type ExportFormat = "pdf" | "html" | "md";
 
 interface ExportDialogProps {
   onExport: (filename: string, format: ExportFormat) => void;
+  initialFilename?: string;
 }
 
-export function ExportDialog({ onExport }: ExportDialogProps) {
+export function ExportDialog({
+  onExport,
+  initialFilename = "document",
+}: ExportDialogProps) {
   const [open, setOpen] = useState(false);
-  const [filename, setFilename] = useState("document");
+  const [filename, setFilename] = useState(initialFilename);
   const [format, setFormat] = useState<ExportFormat>("pdf");
   const { isExporting } = useExportStore();
 
@@ -43,7 +47,15 @@ export function ExportDialog({ onExport }: ExportDialogProps) {
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        setOpen(nextOpen);
+        if (nextOpen) {
+          setFilename(initialFilename || "document");
+        }
+      }}
+    >
       <DialogTrigger asChild>
         <Button
           disabled={isExporting}
@@ -51,7 +63,7 @@ export function ExportDialog({ onExport }: ExportDialogProps) {
         >
           {isExporting ? (
             <>
-              <Loader2 className="h-4 w-4 animate-spin min-[420px]:mr-2" />
+              <Loader2 className="h-4 w-4 animate-spin min-[420px]:mr-2 " />
               <span className="hidden min-[420px]:inline">Exporting...</span>
             </>
           ) : (

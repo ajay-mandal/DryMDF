@@ -4,9 +4,11 @@ import type { EditorSettings } from "@/types/editor";
 
 interface EditorStore {
   content: string;
+  filename: string;
   settings: EditorSettings;
 
   setContent: (content: string) => void;
+  setFilename: (filename: string) => void;
   updateSettings: (settings: Partial<EditorSettings>) => void;
   resetContent: () => void;
 }
@@ -53,13 +55,18 @@ graph TD
 Start typing to begin!
 `;
 
+const defaultFilename = "document";
+
 export const useEditorStore = create<EditorStore>()(
   persist(
     (set) => ({
       content: defaultContent,
+      filename: defaultFilename,
       settings: defaultSettings,
 
       setContent: (content) => set({ content }),
+
+      setFilename: (filename) => set({ filename }),
 
       updateSettings: (newSettings) =>
         set((state) => ({
@@ -72,6 +79,7 @@ export const useEditorStore = create<EditorStore>()(
       name: "drymdf-editor-storage",
       partialize: (state) => ({
         content: state.content,
+        filename: state.filename,
         settings: state.settings,
       }),
     },

@@ -8,10 +8,11 @@ import { MarkdownPreview } from "@/components/preview/markdown-preview";
 import { useEditorStore } from "@/stores/editor-store";
 import { useExportStore } from "@/stores/export-store";
 import { apiClient } from "@/lib/api/client";
+import { useMarkdownFileUpload } from "@/hooks/use-markdown-file-upload";
 import { toast } from "sonner";
 
 export default function EditorPage() {
-  const { content } = useEditorStore();
+  const { content, filename, setContent, setFilename } = useEditorStore();
   const { pdfOptions, setExporting } = useExportStore();
   const [previewMode, setPreviewMode] = useState<"markdown" | "pdf">(
     "markdown",
@@ -28,7 +29,7 @@ export default function EditorPage() {
       return;
     }
 
-    setAutoSaveStatus("saving");
+    Promise.resolve().then(() => setAutoSaveStatus("saving"));
     const timer = window.setTimeout(() => {
       setAutoSaveStatus("saved");
       setLastSavedAt(new Date());
@@ -58,6 +59,11 @@ export default function EditorPage() {
     document.body.removeChild(anchor);
     URL.revokeObjectURL(url);
   };
+
+  const { handleUploadMarkdownFile } = useMarkdownFileUpload({
+    onContentLoaded: setContent,
+    onFilenameLoaded: setFilename,
+  });
 
   const handleExport = async (
     filename: string,
@@ -191,8 +197,10 @@ export default function EditorPage() {
   return (
     <div className="h-dvh w-full flex flex-col overflow-hidden bg-slate-50 dark:bg-slate-900">
       <Header
+        filename={filename}
         showExport
         onExport={handleExport}
+        onUploadMarkdownFile={handleUploadMarkdownFile}
         showPdfSettings={previewMode === "pdf"}
         autoSaveStatus={autoSaveStatus}
         lastSavedAt={lastSavedAt}

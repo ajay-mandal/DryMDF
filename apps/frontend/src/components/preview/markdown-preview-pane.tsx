@@ -30,8 +30,8 @@ const HTML_BLOCK_CLASSES =
   "[&>table]:w-full [&>table]:border-collapse [&>table]:mt-0 [&>table]:mb-4 " +
   "[&_th]:border [&_th]:border-slate-300 dark:[&_th]:border-slate-600 [&_th]:px-3 [&_th]:py-1.5 [&_th]:bg-slate-50 dark:[&_th]:bg-slate-700 [&_th]:font-semibold [&_th]:text-left " +
   "[&_td]:border [&_td]:border-slate-300 dark:[&_td]:border-slate-600 [&_td]:px-3 [&_td]:py-1.5 " +
-  "[&_tr]:bg-white dark:[&_tr]:bg-slate-800 [&_tr]:border-t [&_tr]:border-slate-300 dark:[&_tr]:border-slate-600 " +
-  "[&_tr:nth-child(even)]:bg-slate-50 dark:[&_tr:nth-child(even)]:bg-slate-700/50 " +
+  "[&_tr]:bg-slate-50 dark:[&_tr]:bg-slate-800 [&_tr]:border-t [&_tr]:border-slate-300 dark:[&_tr]:border-slate-600 " +
+  "[&_tr:nth-child(even)]:bg-slate-100 dark:[&_tr:nth-child(even)]:bg-slate-700/50 " +
   "[&_a]:text-blue-600 dark:[&_a]:text-blue-400 [&_a]:underline " +
   "[&>hr]:border-0 [&>hr]:border-t [&>hr]:border-slate-300 dark:[&>hr]:border-slate-700 [&>hr]:my-6 " +
   "[&>img]:max-w-full [&>img]:my-4";
@@ -144,7 +144,7 @@ export function MarkdownPreviewPane({ content }: MarkdownPreviewPaneProps) {
   }, [html, mermaidDiagrams]);
 
   return (
-    <div className="h-full min-h-0 w-full flex flex-col overflow-hidden bg-white dark:bg-slate-900">
+    <div className="h-full min-h-0 w-full flex flex-col overflow-hidden bg-slate-50 dark:bg-slate-900">
       <div
         ref={scrollContainerRef}
         onClick={handleClick}
