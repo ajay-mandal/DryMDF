@@ -2,6 +2,8 @@ export interface PdfOptions {
   format?: "a3" | "a4" | "legal";
   pageColor?: string;
   autoTextContrast?: boolean;
+  pageNumberAlign?: "left" | "center" | "right";
+  showTotalPages?: boolean;
   margins?: {
     top?: string;
     right?: string;

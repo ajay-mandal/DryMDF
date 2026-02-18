@@ -17,6 +17,8 @@ const defaultPdfOptions: PdfOptions = {
   format: "a4",
   pageColor: "#ffffff",
   autoTextContrast: true,
+  pageNumberAlign: "center",
+  showTotalPages: true,
   margins: {
     top: "20mm",
     right: "20mm",

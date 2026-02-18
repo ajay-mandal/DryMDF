@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Header } from "@/components/layout/header";
 import { SplitPane } from "@/components/layout/split-pane";
 import { MarkdownEditor } from "@/components/editor/markdown-editor";
@@ -16,6 +16,28 @@ export default function EditorPage() {
   const [previewMode, setPreviewMode] = useState<"markdown" | "pdf">(
     "markdown",
   );
+  const [autoSaveStatus, setAutoSaveStatus] = useState<"saving" | "saved">(
+    "saved",
+  );
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
+  const hasMountedRef = useRef(false);
+
+  useEffect(() => {
+    if (!hasMountedRef.current) {
+      hasMountedRef.current = true;
+      return;
+    }
+
+    setAutoSaveStatus("saving");
+    const timer = window.setTimeout(() => {
+      setAutoSaveStatus("saved");
+      setLastSavedAt(new Date());
+    }, 450);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [content]);
 
   const ensureExtension = (
     baseFilename: string,
@@ -172,6 +194,8 @@ export default function EditorPage() {
         showExport
         onExport={handleExport}
         showPdfSettings={previewMode === "pdf"}
+        autoSaveStatus={autoSaveStatus}
+        lastSavedAt={lastSavedAt}
       />
       <div className="flex-1 min-h-0 overflow-hidden">
         <SplitPane

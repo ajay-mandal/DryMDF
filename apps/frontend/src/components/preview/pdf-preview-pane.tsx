@@ -86,7 +86,7 @@ export function PdfPreviewPane({
     }
 
     const handleWheel = (e: WheelEvent) => {
-      if (!(e.ctrlKey || e.metaKey)) {
+      if (!(e.ctrlKey || e.metaKey || e.altKey)) {
         return;
       }
 
@@ -369,7 +369,7 @@ export function PdfPreviewPane({
 
             <span
               className="text-xs text-slate-400 dark:text-slate-500 hidden sm:inline"
-              title="Use Ctrl+Scroll to zoom in/out"
+              title="Use Ctrl/⌘/Alt + Scroll to zoom in/out"
             >
               {Math.round(scale * 100)}% zoom
             </span>
@@ -410,7 +410,7 @@ export function PdfPreviewPane({
               {Math.round(scale * 100)}%
             </div>
             <div className="text-xs text-center mt-1 opacity-75">
-              Ctrl+Scroll to zoom
+              Ctrl/⌘/Alt + Scroll to zoom
             </div>
           </div>
         </div>
@@ -449,6 +449,7 @@ export function PdfPreviewPane({
                   className="w-full border-0"
                   style={{
                     height: `${Math.max(pageHeight * scale, 1)}px`,
+                    pointerEvents: "none",
                     background:
                       isDarkPageColor && autoTextContrast ? "#0f172a" : "white",
                   }}

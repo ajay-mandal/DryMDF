@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useEditorStore } from "@/stores/editor-store";
 import { useExportStore } from "@/stores/export-store";
 import type { PdfOptions } from "@/types/pdf";
+import { toast } from "sonner";
 import { MarkdownPreviewPane } from "./markdown-preview-pane";
 import { PdfPreviewPane } from "./pdf-preview-pane";
 
@@ -16,6 +17,13 @@ interface PdfPreviewRequest {
   id: number;
   content: string;
   options: PdfOptions;
+}
+
+function clonePdfOptions(options: PdfOptions): PdfOptions {
+  return {
+    ...options,
+    margins: options.margins ? { ...options.margins } : undefined,
+  };
 }
 
 export function MarkdownPreview({ onPreviewModeChange }: MarkdownPreviewProps) {
@@ -34,18 +42,49 @@ export function MarkdownPreview({ onPreviewModeChange }: MarkdownPreviewProps) {
   const isPdfPreviewOutdated =
     previewMode === "pdf" &&
     !!pdfPreviewRequest &&
-    (content !== pdfPreviewRequest.content ||
-      JSON.stringify(pdfOptions) !== JSON.stringify(pdfPreviewRequest.options));
+    content !== pdfPreviewRequest.content;
+
+  useEffect(() => {
+    if (previewMode !== "pdf") {
+      return;
+    }
+
+    setPdfPreviewRequest((currentRequest) => {
+      if (!currentRequest) {
+        return currentRequest;
+      }
+
+      const isMarkdownChanged = content !== currentRequest.content;
+      if (isMarkdownChanged) {
+        return currentRequest;
+      }
+
+      const areOptionsChanged =
+        JSON.stringify(pdfOptions) !== JSON.stringify(currentRequest.options);
+
+      if (!areOptionsChanged) {
+        return currentRequest;
+      }
+
+      toast.success("PDF settings updated", {
+        id: "pdf-preview-settings",
+        duration: 1200,
+      });
+
+      return {
+        id: Date.now(),
+        content: currentRequest.content,
+        options: clonePdfOptions(pdfOptions),
+      };
+    });
+  }, [previewMode, pdfOptions, content]);
 
   const handlePdfPreviewClick = () => {
     setPreviewMode("pdf");
     setPdfPreviewRequest({
       id: Date.now(),
       content,
-      options: {
-        ...pdfOptions,
-        margins: pdfOptions.margins ? { ...pdfOptions.margins } : undefined,
-      },
+      options: clonePdfOptions(pdfOptions),
     });
   };
 

@@ -334,6 +334,18 @@ Use these rules for every frontend implementation. Prioritize maintainability, c
 - Keep each feature path independently testable and avoid entangling unrelated concerns in one function.
 - Use predictable file boundaries (components, hooks, services, utils) to keep code easy to navigate.
 
+12. **UI/UX Quality Baseline (Always-On)**
+
+- Default to a polished, production-grade UX for all visible frontend changes, not only on explicit request.
+- Prefer contextual controls over fragmented controls (for example, one cohesive dropdown for related settings).
+- Use state-aware labels and actions (for example, show "Enable" when disabled and "Disable" when enabled).
+- Provide clear visual state cues using design-system-safe indicators (for example, selected-state color and single active marker only).
+- Avoid noisy or duplicate indicators; when a component already has a built-in selected indicator, do not add extra custom markers.
+- Keep interactions predictable: disable dependent options when parent features are off.
+- Preserve consistency across light/dark themes and mobile/desktop layouts.
+- For settings with immediate effect, provide subtle feedback and keep updates intuitive (auto-refresh where expected, manual refresh only when required).
+- Never regress UX quality during refactors; if simplifying code, preserve interaction clarity and accessibility.
+
 ### Frontend Done Checklist
 
 - [ ] Strict typing preserved (no unbounded `any`)
@@ -345,6 +357,10 @@ Use these rules for every frontend implementation. Prioritize maintainability, c
 - [ ] Mature libraries/services used where appropriate
 - [ ] External integrations follow official/community standards
 - [ ] Multi-feature logic is separated into clear blocks/modules
+- [ ] Related settings are grouped into cohesive controls (no fragmented UX)
+- [ ] Labels and actions are state-aware (Enable/Disable style)
+- [ ] Exactly one active indicator is visible for selected options (no duplicate dots/markers)
+- [ ] Dependent controls are properly enabled/disabled based on parent setting state
 
 ### Component Patterns
 

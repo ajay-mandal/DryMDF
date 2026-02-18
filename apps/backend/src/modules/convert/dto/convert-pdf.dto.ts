@@ -60,6 +60,23 @@ class PdfOptionsDto {
   autoTextContrast?: boolean;
 
   @ApiPropertyOptional({
+    enum: ["left", "center", "right"],
+    default: "center",
+    description: "Page number alignment in footer",
+  })
+  @IsEnum(["left", "center", "right"])
+  @IsOptional()
+  pageNumberAlign?: "left" | "center" | "right";
+
+  @ApiPropertyOptional({
+    default: true,
+    description: "Show total pages along with current page number",
+  })
+  @IsBoolean()
+  @IsOptional()
+  showTotalPages?: boolean;
+
+  @ApiPropertyOptional({
     type: MarginsDto,
     description: "Page margins",
   })

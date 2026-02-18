@@ -7,6 +7,8 @@ interface PdfGenerationOptions {
   format?: string;
   pageColor?: string;
   autoTextContrast?: boolean;
+  pageNumberAlign?: "left" | "center" | "right";
+  showTotalPages?: boolean;
   margins?: {
     top?: string;
     right?: string;
@@ -103,6 +105,11 @@ export class PdfService implements OnModuleInit, OnModuleDestroy {
       // Extra wait after Mermaid diagrams are detected
       await page.waitForTimeout(500);
 
+      const displayHeaderFooter = options?.showHeaderFooter ?? false;
+      const headerTemplate = displayHeaderFooter
+        ? options?.headerTemplate?.trim() || "<div></div>"
+        : undefined;
+
       const pdfOptions: PDFOptions = {
         format: (options?.format || "a4") as PDFOptions["format"],
         margin: {
@@ -112,9 +119,14 @@ export class PdfService implements OnModuleInit, OnModuleDestroy {
           left: "0",
         },
         printBackground: true,
-        displayHeaderFooter: options?.showHeaderFooter || false,
-        headerTemplate: options?.headerTemplate || undefined,
-        footerTemplate: options?.footerTemplate || this.getDefaultFooter(),
+        displayHeaderFooter,
+        headerTemplate,
+        footerTemplate:
+          options?.footerTemplate ||
+          this.getDefaultFooter(
+            options?.pageNumberAlign,
+            options?.showTotalPages ?? true,
+          ),
       };
 
       const pdfBuffer = await page.pdf(pdfOptions);
@@ -154,16 +166,30 @@ export class PdfService implements OnModuleInit, OnModuleDestroy {
           <style>${this.getBaseStyles(options?.pageColor, options?.autoTextContrast ?? true, margins)}</style>
         </head>
         <body>
-          ${html}
+          <div class="pdf-page-content">
+            ${html}
+          </div>
         </body>
       </html>
     `;
   }
 
-  private getDefaultFooter(): string {
+  private getDefaultFooter(
+    alignment: "left" | "center" | "right" = "center",
+    showTotalPages: boolean = true,
+  ): string {
+    const justifyContent =
+      alignment === "left"
+        ? "flex-start"
+        : alignment === "right"
+          ? "flex-end"
+          : "center";
+
     return `
-      <div style="font-size: 10px; text-align: center; width: 100%; margin: 0 20px;">
-        <span class="pageNumber"></span> / <span class="totalPages"></span>
+      <div style="font-size: 10px; width: 100%; padding: 0 20px; display: flex; justify-content: ${justifyContent}; color: #64748b;">
+        <span>
+          <span class="pageNumber"></span>${showTotalPages ? ' / <span class="totalPages"></span>' : ""}
+        </span>
       </div>
     `;
   }
@@ -203,9 +229,16 @@ export class PdfService implements OnModuleInit, OnModuleDestroy {
       body {
         margin: 0;
         padding: 0;
+        width: 100%;
+        height: 100%;
         background: ${normalizedPageColor};
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
+      }
+
+      @page {
+        background: ${normalizedPageColor};
+        margin: ${resolvedMargins.top} ${resolvedMargins.right} ${resolvedMargins.bottom} ${resolvedMargins.left};
       }
 
       body::before {
@@ -213,19 +246,25 @@ export class PdfService implements OnModuleInit, OnModuleDestroy {
         position: fixed;
         inset: 0;
         background: ${normalizedPageColor};
-        z-index: -1;
+        z-index: 0;
       }
       
       body { 
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
         line-height: 1.6;
         color: ${textColor};
-        padding-top: calc(${resolvedMargins.top} + 20px);
-        padding-right: calc(${resolvedMargins.right} + 20px);
-        padding-bottom: calc(${resolvedMargins.bottom} + 20px);
-        padding-left: calc(${resolvedMargins.left} + 20px);
+        padding: 0;
         max-width: 100%;
-        background: ${normalizedPageColor};
+        background: transparent;
+        position: relative;
+      }
+
+      .pdf-page-content {
+        background: transparent;
+        padding: 0;
+        position: relative;
+        z-index: 1;
+        min-height: 100%;
       }
       
       h1, h2, h3, h4, h5, h6 {

@@ -4,7 +4,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useDebounce } from "@/hooks/use-debounce";
 import { parseMarkdown, extractMermaidFromHtml } from "@/lib/markdown/parser";
 import { MermaidRenderer } from "./mermaid-renderer";
-import { A4_CONTENT_AREA_HEIGHT } from "./preview-config";
 import { toast } from "sonner";
 import "katex/dist/katex.min.css";
 import "highlight.js/styles/github.css";
@@ -41,13 +40,11 @@ export function MarkdownPreviewPane({ content }: MarkdownPreviewPaneProps) {
   const debouncedContent = useDebounce(content, 300);
   const [html, setHtml] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [pageCount, setPageCount] = useState(1);
   const [mermaidDiagrams, setMermaidDiagrams] = useState<
     Array<{ id: string; code: string }>
   >([]);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const contentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const renderMarkdown = async () => {
@@ -74,27 +71,6 @@ export function MarkdownPreviewPane({ content }: MarkdownPreviewPaneProps) {
 
     renderMarkdown();
   }, [debouncedContent]);
-
-  useEffect(() => {
-    const calculatePageCount = () => {
-      if (!contentRef.current || !html) {
-        setPageCount(1);
-        return;
-      }
-
-      const actualHeight = contentRef.current.scrollHeight;
-      const calculatedPages = Math.ceil(actualHeight / A4_CONTENT_AREA_HEIGHT);
-      setPageCount(Math.max(1, calculatedPages));
-    };
-
-    const timer = window.setTimeout(calculatePageCount, 120);
-    const delayedTimer = window.setTimeout(calculatePageCount, 700);
-
-    return () => {
-      window.clearTimeout(timer);
-      window.clearTimeout(delayedTimer);
-    };
-  }, [html, mermaidDiagrams]);
 
   const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
     const target = e.target as HTMLElement;
@@ -169,12 +145,6 @@ export function MarkdownPreviewPane({ content }: MarkdownPreviewPaneProps) {
 
   return (
     <div className="h-full min-h-0 w-full flex flex-col overflow-hidden bg-white dark:bg-slate-900">
-      <div className="border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 sm:px-4 py-2">
-        <span className="text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">
-          {pageCount} {pageCount === 1 ? "page" : "pages"}
-        </span>
-      </div>
-
       <div
         ref={scrollContainerRef}
         onClick={handleClick}
@@ -191,7 +161,6 @@ export function MarkdownPreviewPane({ content }: MarkdownPreviewPaneProps) {
           </div>
         ) : (
           <div
-            ref={contentRef}
             className="relative"
             style={{
               fontFamily:

@@ -8,6 +8,8 @@ interface PdfOptions {
   format?: string;
   pageColor?: string;
   autoTextContrast?: boolean;
+  pageNumberAlign?: "left" | "center" | "right";
+  showTotalPages?: boolean;
   margins?: {
     top?: string;
     right?: string;
