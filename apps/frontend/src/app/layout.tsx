@@ -18,6 +18,11 @@ export const metadata: Metadata = {
   title: "DryMDF",
   description:
     "Modern Markdown to PDF converter with live preview and Mermaid diagram support",
+  icons: {
+    icon: "/icon.svg",
+    shortcut: "/icon.svg",
+    apple: "/icon.svg",
+  },
 };
 
 export default function RootLayout({
