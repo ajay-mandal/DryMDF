@@ -56,6 +56,7 @@ export function PdfPreviewPane({
   const [progress, setProgress] = useState(0);
   const [displayProgress, setDisplayProgress] = useState(0);
   const [socketClientId, setSocketClientId] = useState("");
+  const [isZoomModifierActive, setIsZoomModifierActive] = useState(false);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const exactPdfRequestRef = useRef(0);
@@ -116,6 +117,34 @@ export function PdfPreviewPane({
       if (zoomTimeoutRef.current) {
         clearTimeout(zoomTimeoutRef.current);
       }
+    };
+  }, []);
+
+  useEffect(() => {
+    const updateModifierState = (event: KeyboardEvent) => {
+      setIsZoomModifierActive(event.ctrlKey || event.metaKey || event.altKey);
+    };
+
+    const resetModifierState = () => {
+      setIsZoomModifierActive(false);
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState !== "visible") {
+        resetModifierState();
+      }
+    };
+
+    window.addEventListener("keydown", updateModifierState);
+    window.addEventListener("keyup", updateModifierState);
+    window.addEventListener("blur", resetModifierState);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener("keydown", updateModifierState);
+      window.removeEventListener("keyup", updateModifierState);
+      window.removeEventListener("blur", resetModifierState);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, []);
 
@@ -449,9 +478,16 @@ export function PdfPreviewPane({
                   className="w-full border-0"
                   style={{
                     height: `${Math.max(pageHeight * scale, 1)}px`,
-                    pointerEvents: "none",
                     background:
                       isDarkPageColor && autoTextContrast ? "#0f172a" : "white",
+                  }}
+                />
+                <div
+                  aria-hidden="true"
+                  className="absolute inset-0 z-20"
+                  style={{
+                    pointerEvents: isZoomModifierActive ? "auto" : "none",
+                    cursor: isZoomModifierActive ? "zoom-in" : "default",
                   }}
                 />
               </div>
