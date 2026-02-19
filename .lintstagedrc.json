@@ -1,4 +1,7 @@
 {
-  "*.{ts,tsx}": ["eslint --fix", "prettier --write"],
+  "apps/frontend/**/*.{ts,tsx}": [
+    "eslint --config apps/frontend/eslint.config.mjs --fix",
+    "prettier --write"
+  ],
   "*.{json,md}": ["prettier --write"]
 }

@@ -59,7 +59,7 @@ export function ExportDialog({
       <DialogTrigger asChild>
         <Button
           disabled={isExporting}
-          className="bg-blue-600 hover:bg-blue-700 text-white dark:bg-blue-500 dark:hover:bg-blue-600 px-2 sm:px-3"
+          className="bg-blue-600 hover:bg-blue-700 text-white dark:bg-blue-600 dark:hover:bg-blue-700 px-2 sm:px-3"
         >
           {isExporting ? (
             <>

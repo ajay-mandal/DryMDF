@@ -1,1 +1,2 @@
+export PATH="$PWD/apps/frontend/node_modules/.bin:$PATH"
 pnpm lint-staged

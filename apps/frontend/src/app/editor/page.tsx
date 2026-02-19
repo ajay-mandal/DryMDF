@@ -69,8 +69,8 @@ export default function EditorPage() {
     filename: string,
     format: "pdf" | "html" | "md",
   ) => {
-    let pollInterval: NodeJS.Timeout | null = null;
-    let timeoutId: NodeJS.Timeout | null = null;
+    let pollInterval: ReturnType<typeof setInterval> | null = null;
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
 
     try {
       setExporting(true);
