@@ -1,0 +1,41 @@
+# Dependencies (Vercel installs fresh via install command)
+node_modules
+
+# Backend application
+apps/backend
+
+# Build artifacts
+dist
+.turbo
+out
+build
+
+# Testing
+coverage
+**/__tests__
+**/*.test.ts
+**/*.spec.ts
+
+# Development & Git
+.git
+.github
+.vscode
+.idea
+
+# Docker & Scripts
+docker
+Dockerfile*
+docker-compose*.yml
+scripts
+guides
+# Documentation
+docs
+*.md
+
+# Logs & OS
+*.log
+.DS_Store
+
+# Environment (set in Vercel dashboard instead)
+.env*
+!.env.example
