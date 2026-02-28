@@ -64,6 +64,9 @@ pnpm install
 cp apps/frontend/.env.example apps/frontend/.env.local
 cp apps/backend/.env.example apps/backend/.env
 
+# Start Redis (required for job queues)
+./scripts/start-redis.sh
+
 # Start development servers
 pnpm dev
 ```
@@ -73,6 +76,34 @@ This will start:
 - Frontend: http://localhost:3000
 - Backend API: http://localhost:4000
 - API Documentation: http://localhost:4000/api
+- Redis: redis://localhost:6380
+
+### Redis Setup
+
+DryMDF uses Redis for job queue management (PDF generation). A dedicated Redis instance runs on port 6380 to avoid conflicts with other Redis installations.
+
+**Quick Commands:**
+
+```bash
+# Start Redis
+./scripts/start-redis.sh
+
+# Check Redis status
+docker ps --filter name=drymdf-redis
+```
+
+**Using Docker Compose:**
+
+```bash
+# Start only Redis
+docker-compose up -d redis
+
+# Start all services (Redis + API + Web)
+docker-compose up -d
+
+# Stop all services
+docker-compose down
+```
 
 ## Development
 
