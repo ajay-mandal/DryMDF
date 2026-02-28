@@ -1,62 +1,147 @@
-# Build stage
-FROM node:18-alpine AS builder
+# =============================================================================
+# DryMDF Backend Dockerfile - Multi-Architecture (amd64/arm64)
+# Optimized for NestJS Turborepo Monorepo with Puppeteer
+# Uses turbo prune for minimal Docker context (recommended by Turborepo)
+# =============================================================================
 
-# Install pnpm
-RUN npm install -g pnpm@8
+# -----------------------------------------------------------------------------
+# Stage 1: Base - Common setup for all stages
+# -----------------------------------------------------------------------------
+FROM node:18-alpine AS base
 
+# Configure pnpm global directory (required for global installs)
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
+
+RUN corepack enable && corepack prepare pnpm@8 --activate
 WORKDIR /app
 
-# Copy workspace files
-COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
-COPY turbo.json ./
-COPY tsconfig.base.json ./
+# -----------------------------------------------------------------------------
+# Stage 2: Pruner - Create minimal monorepo subset using turbo prune
+# This is the recommended approach for Turborepo Docker builds
+# -----------------------------------------------------------------------------
+FROM base AS pruner
+RUN pnpm add -g turbo@^2
 
-# Copy all package.json files
-COPY apps/backend/package.json ./apps/backend/
-COPY packages/shared/package.json ./packages/shared/
+# Copy entire monorepo
+COPY . .
 
-# Install dependencies
-RUN pnpm install --frozen-lockfile
+# Prune to only what's needed for @drymdf/backend
+# Creates out/json (package.json files) and out/full (full source)
+RUN turbo prune @drymdf/backend --docker
 
-# Copy source code
-COPY apps/backend ./apps/backend
-COPY packages/shared ./packages/shared
+# -----------------------------------------------------------------------------
+# Stage 3: Dependencies - Install ALL dependencies with cache optimization
+# Uses pruned lockfile for faster installs
+# -----------------------------------------------------------------------------
+FROM base AS deps
 
-# Build shared package first
-RUN pnpm --filter @drymdf/shared build
+# Skip puppeteer browser download - we use system Chromium
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+ENV PUPPETEER_SKIP_DOWNLOAD=true
 
-# Build API
-RUN pnpm --filter @drymdf/backend build
+COPY --from=pruner /app/out/json/ ./
 
-# Production stage
-FROM node:18-alpine
+# Install all dependencies (ignore scripts to skip husky)
+RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store \
+    pnpm install --frozen-lockfile --ignore-scripts
 
-# Install Chromium for Puppeteer
+# -----------------------------------------------------------------------------
+# Stage 4: Builder - Compile TypeScript and build the application
+# -----------------------------------------------------------------------------
+FROM base AS builder
+
+# Copy installed dependencies
+COPY --from=deps /app/ ./
+
+# Copy full source from pruner (includes tsconfig, etc.)
+COPY --from=pruner /app/out/full/ ./
+
+# Build using turbo (handles dependency ordering automatically)
+RUN pnpm turbo run build --filter=@drymdf/backend
+
+# Verify build output exists
+RUN test -f /app/apps/backend/dist/main.js || (echo "ERROR: Build failed - main.js not found" && exit 1)
+
+# -----------------------------------------------------------------------------
+# Stage 5: Production Dependencies - Minimal production node_modules
+# -----------------------------------------------------------------------------
+FROM base AS prod-deps
+
+# Skip puppeteer browser download - we use system Chromium
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+ENV PUPPETEER_SKIP_DOWNLOAD=true
+
+# Copy package files from pruner (preserves full workspace structure)
+COPY --from=pruner /app/out/json/ ./
+
+# Install production dependencies only (ignore scripts to skip husky)
+RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store \
+    pnpm install --frozen-lockfile --prod --ignore-scripts
+
+# -----------------------------------------------------------------------------
+# Stage 6: Runtime - Minimal production image with Chromium
+# -----------------------------------------------------------------------------
+FROM node:18-alpine AS runtime
+
+# Install Chromium and dependencies for Puppeteer (multi-arch compatible)
+# These packages work on both amd64 and arm64
 RUN apk add --no-cache \
     chromium \
     nss \
     freetype \
     harfbuzz \
     ca-certificates \
-    ttf-freefont
+    ttf-freefont \
+    font-noto-emoji \
+    # Required for Puppeteer stability
+    dumb-init \
+    # Timezone support
+    tzdata
 
-# Set Puppeteer to use installed Chromium
+# Create non-root user for security (specific UID/GID for consistency)
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nestjs -u 1001 -G nodejs
+
+# Set Puppeteer environment variables
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
-    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
+    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser \
+    # Node.js production optimizations
+    NODE_ENV=production \
+    # Reduce memory usage
+    NODE_OPTIONS="--max-old-space-size=512"
 
 WORKDIR /app
 
-# Copy built application
-COPY --from=builder /app/apps/backend/dist ./dist
-COPY --from=builder /app/apps/backend/package.json ./
-COPY --from=builder /app/node_modules ./node_modules
+# ✅ FIX: Preserve the full pnpm workspace structure so symlinks resolve correctly.
+# pnpm stores real package files in node_modules/.pnpm/ and uses relative symlinks
+# from each workspace package's node_modules/ back up to the .pnpm store.
+# Flattening this structure (as before) breaks those relative symlink paths,
+# causing "Cannot find module" errors at runtime.
 
-# Expose port
+# Copy ROOT node_modules (contains .pnpm store + root-level symlinks)
+COPY --from=prod-deps --chown=nestjs:nodejs /app/node_modules/ ./node_modules/
+
+# Copy backend's node_modules into its correct relative path
+# Symlinks here resolve as: ../../node_modules/.pnpm/... → /app/node_modules/.pnpm/ ✅
+COPY --from=prod-deps --chown=nestjs:nodejs /app/apps/backend/node_modules/ ./apps/backend/node_modules/
+
+# Copy built application into its correct relative path
+COPY --from=builder --chown=nestjs:nodejs /app/apps/backend/dist/ ./apps/backend/dist/
+COPY --from=builder --chown=nestjs:nodejs /app/apps/backend/package.json ./apps/backend/package.json
+
+# Switch to non-root user
+USER nestjs
+
+# Expose application port
 EXPOSE 4000
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD node -e "require('http').get('http://localhost:4000/api/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
+# Health check with proper timeout for cold starts
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+    CMD node -e "const http = require('http'); const req = http.get('http://localhost:' + (process.env.PORT || 4000) + '/api/health', (r) => { process.exit(r.statusCode === 200 ? 0 : 1); }); req.on('error', () => process.exit(1)); req.end();"
 
-# Start application
-CMD ["node", "dist/main.js"]
+# Use dumb-init to handle signals properly (PID 1 issues)
+ENTRYPOINT ["dumb-init", "--"]
+
+# ✅ FIX: Point to the correct path matching the preserved workspace structure
+CMD ["node", "apps/backend/dist/main.js"]
