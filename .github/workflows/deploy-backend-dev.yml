@@ -2,18 +2,18 @@ name: Deploy Backend to GCP Cloud Run
 
 on:
   push:
-    branches: [main]
+    branches: [development]
     paths:
       - "apps/backend/**"
       - "packages/shared/**"
       - "docker/Dockerfile.api"
-      - ".github/workflows/deploy-backend.yml"
+      - ".github/workflows/deploy-backend-dev.yml"
   workflow_dispatch:
 
 env:
   GCP_REGION: us-central1
-  SERVICE_NAME: drymdf-backend-prod
-  IMAGE_NAME: drymdf-backend-prod
+  SERVICE_NAME: drymdf-backend-dev
+  IMAGE_NAME: drymdf-backend-dev
 
 jobs:
   build-and-deploy:
@@ -67,10 +67,10 @@ jobs:
             --concurrency=40
             --timeout=300
           env_vars: |
-            NODE_ENV=production
+            NODE_ENV=development
             PORT=4000
             API_PREFIX=api
-            CORS_ORIGIN=${{ secrets.PRODUCTION_URL }}
+            CORS_ORIGIN=${{ secrets.DEV_URL }}
             REDIS_HOST=${{ secrets.UPSTASH_REDIS_HOST }}
             REDIS_PORT=${{ secrets.UPSTASH_REDIS_PORT }}
             REDIS_PASSWORD=${{ secrets.UPSTASH_REDIS_PASSWORD }}
@@ -78,7 +78,7 @@ jobs:
             PUPPETEER_ARGS=--no-sandbox,--disable-setuid-sandbox,--disable-dev-shm-usage,--disable-gpu
             STORAGE_TYPE=local
             THROTTLE_TTL=60000
-            THROTTLE_LIMIT=10
+            THROTTLE_LIMIT=20
             NODE_OPTIONS=--max-old-space-size=384
 
       - name: Get Cloud Run URL
