@@ -26,6 +26,11 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+        env:
+          # Prevent puppeteer/Chrome download during CI - not needed for lint/typecheck/build
+          PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: "true"
+          PUPPETEER_SKIP_DOWNLOAD: "true"
+          PUPPETEER_SKIP_CHROME_DOWNLOAD: "true"
 
       - name: Type check
         run: pnpm type-check

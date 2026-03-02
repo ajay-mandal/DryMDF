@@ -14,6 +14,8 @@ env:
   GCP_REGION: us-central1
   SERVICE_NAME: drymdf-backend-prod
   IMAGE_NAME: drymdf-backend-prod
+  # Non-sensitive GCP config - safe to hardcode in env
+  GCP_AR_REPO: drymdf-repo
 
 jobs:
   build-and-deploy:
@@ -25,6 +27,20 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Validate required secrets
+        run: |
+          missing=""
+          [ -z "${{ secrets.GCP_SA_KEY }}" ]        && missing="$missing\n  ❌ GCP_SA_KEY"
+          [ -z "${{ secrets.GCP_PROJECT_ID }}" ]    && missing="$missing\n  ❌ GCP_PROJECT_ID"
+          [ -z "${{ secrets.UPSTASH_REDIS_HOST }}" ] && missing="$missing\n  ❌ UPSTASH_REDIS_HOST"
+          [ -z "${{ secrets.PRODUCTION_URL }}" ]    && missing="$missing\n  ❌ PRODUCTION_URL"
+          if [ -n "$missing" ]; then
+            echo "Missing GitHub secrets — go to Settings → Secrets and variables → Actions:"
+            echo -e "$missing"
+            exit 1
+          fi
+          echo "✅ All required secrets present"
 
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
@@ -42,21 +58,21 @@ jobs:
         run: |
           docker build \
             -f docker/Dockerfile.api \
-            -t ${{ env.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.GCP_AR_REPO }}/${{ env.IMAGE_NAME }}:${{ github.sha }} \
-            -t ${{ env.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.GCP_AR_REPO }}/${{ env.IMAGE_NAME }}:latest \
+            -t ${{ env.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ env.GCP_AR_REPO }}/${{ env.IMAGE_NAME }}:${{ github.sha }} \
+            -t ${{ env.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ env.GCP_AR_REPO }}/${{ env.IMAGE_NAME }}:latest \
             .
 
       - name: Push to Artifact Registry
         run: |
-          docker push ${{ env.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.GCP_AR_REPO }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
-          docker push ${{ env.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.GCP_AR_REPO }}/${{ env.IMAGE_NAME }}:latest
+          docker push ${{ env.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ env.GCP_AR_REPO }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          docker push ${{ env.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ env.GCP_AR_REPO }}/${{ env.IMAGE_NAME }}:latest
 
       - name: Deploy to Cloud Run
         uses: google-github-actions/deploy-cloudrun@v2
         with:
           service: ${{ env.SERVICE_NAME }}
           region: ${{ env.GCP_REGION }}
-          image: ${{ env.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.GCP_AR_REPO }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          image: ${{ env.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ env.GCP_AR_REPO }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
           flags: |
             --allow-unauthenticated
             --port=4000

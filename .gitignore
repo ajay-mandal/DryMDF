@@ -53,3 +53,5 @@ next-env.d.ts
 Thumbs.db
 /scripts
 /guides
+.secrets
+.actrc
