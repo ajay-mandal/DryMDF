@@ -37,9 +37,11 @@ jobs:
       - name: Validate Vercel secrets
         run: |
           missing=""
-          [ -z "${{ secrets.VERCEL_TOKEN }}" ]      && missing="$missing\n  ❌ VERCEL_TOKEN"
-          [ -z "${{ secrets.VERCEL_ORG_ID }}" ]     && missing="$missing\n  ❌ VERCEL_ORG_ID"
-          [ -z "${{ secrets.VERCEL_PROJECT_ID }}" ] && missing="$missing\n  ❌ VERCEL_PROJECT_ID"
+          [ -z "${{ secrets.VERCEL_TOKEN }}" ]        && missing="$missing\n  ❌ VERCEL_TOKEN"
+          [ -z "${{ secrets.VERCEL_ORG_ID }}" ]       && missing="$missing\n  ❌ VERCEL_ORG_ID"
+          [ -z "${{ secrets.VERCEL_PROJECT_ID }}" ]   && missing="$missing\n  ❌ VERCEL_PROJECT_ID"
+          [ -z "${{ secrets.BACKEND_DEV_URL }}" ]     && missing="$missing\n  ❌ BACKEND_DEV_URL"
+          [ -z "${{ secrets.FRONTEND_DEV_URL }}" ]    && missing="$missing\n  ❌ FRONTEND_DEV_URL"
           if [ -n "$missing" ]; then
             echo "Missing GitHub secrets — go to Settings → Secrets and variables → Actions:"
             echo -e "$missing"
@@ -55,9 +57,12 @@ jobs:
 
       - name: Build Project
         run: vercel build --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          NEXT_PUBLIC_API_URL: ${{ secrets.BACKEND_DEV_URL }}/api
+          NEXT_PUBLIC_WS_URL: ${{ secrets.BACKEND_DEV_URL }}
 
       - name: Deploy to Vercel
         run: |
           vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }}
-          echo "### Frontend Deployed! :rocket:" >> $GITHUB_STEP_SUMMARY
-          echo "URL: ${{ secrets.DEVELOPMENT_URL }}" >> $GITHUB_STEP_SUMMARY
+          echo "### Frontend (Dev) Deployed! :rocket:" >> $GITHUB_STEP_SUMMARY
+          echo "URL: ${{ secrets.FRONTEND_DEV_URL }}" >> $GITHUB_STEP_SUMMARY

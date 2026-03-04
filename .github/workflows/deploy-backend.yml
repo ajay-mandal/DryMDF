@@ -34,7 +34,7 @@ jobs:
           [ -z "${{ secrets.GCP_SA_KEY }}" ]        && missing="$missing\n  ❌ GCP_SA_KEY"
           [ -z "${{ secrets.GCP_PROJECT_ID }}" ]    && missing="$missing\n  ❌ GCP_PROJECT_ID"
           [ -z "${{ secrets.UPSTASH_REDIS_HOST }}" ] && missing="$missing\n  ❌ UPSTASH_REDIS_HOST"
-          [ -z "${{ secrets.PRODUCTION_URL }}" ]    && missing="$missing\n  ❌ PRODUCTION_URL"
+          [ -z "${{ secrets.FRONTEND_PROD_URL }}" ] && missing="$missing\n  ❌ FRONTEND_PROD_URL"
           if [ -n "$missing" ]; then
             echo "Missing GitHub secrets — go to Settings → Secrets and variables → Actions:"
             echo -e "$missing"
@@ -86,7 +86,7 @@ jobs:
             NODE_ENV=production
             PORT=4000
             API_PREFIX=api
-            CORS_ORIGIN=${{ secrets.PRODUCTION_URL }}
+            CORS_ORIGIN=${{ secrets.FRONTEND_PROD_URL }}
             REDIS_HOST=${{ secrets.UPSTASH_REDIS_HOST }}
             REDIS_PORT=${{ secrets.UPSTASH_REDIS_PORT }}
             REDIS_PASSWORD=${{ secrets.UPSTASH_REDIS_PASSWORD }}

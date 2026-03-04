@@ -10,14 +10,21 @@ async function bootstrap() {
   const configService = app.get(ConfigService);
   const port = configService.get<number>("PORT", 4000);
   const apiPrefix = configService.get<string>("API_PREFIX", "api");
-  const corsOrigin = configService.get<string>(
+  const rawCorsOrigins = configService.get<string>(
     "CORS_ORIGIN",
     "http://localhost:3000",
   );
+  const allowedOrigins = rawCorsOrigins.split(",").map((o) => o.trim());
 
   // Enable CORS
   app.enableCors({
-    origin: corsOrigin,
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error(`Origin ${origin} not allowed by CORS`));
+      }
+    },
     credentials: true,
   });
 
