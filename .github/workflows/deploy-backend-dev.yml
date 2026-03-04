@@ -84,7 +84,6 @@ jobs:
             --timeout=300
           env_vars: |
             NODE_ENV=development
-            PORT=4000
             API_PREFIX=api
             CORS_ORIGIN=${{ secrets.FRONTEND_DEV_URL }}
             REDIS_HOST=${{ secrets.UPSTASH_REDIS_HOST }}

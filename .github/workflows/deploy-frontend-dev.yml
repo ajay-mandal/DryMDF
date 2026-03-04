@@ -9,16 +9,17 @@ on:
       - ".github/workflows/deploy-frontend-dev.yml"
   workflow_dispatch:
 
-env:
-  VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-  VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Set Vercel env vars (trim secrets to remove stray newlines)
+        run: |
+          echo "VERCEL_ORG_ID=$(echo '${{ secrets.VERCEL_ORG_ID }}' | tr -d '[:space:]')" >> $GITHUB_ENV
+          echo "VERCEL_PROJECT_ID=$(echo '${{ secrets.VERCEL_PROJECT_ID }}' | tr -d '[:space:]')" >> $GITHUB_ENV
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v2
