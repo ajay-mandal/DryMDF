@@ -61,6 +61,8 @@ jobs:
         env:
           NEXT_PUBLIC_API_URL: ${{ secrets.BACKEND_PROD_URL }}/api
           NEXT_PUBLIC_WS_URL: ${{ secrets.BACKEND_PROD_URL }}
+          PUPPETEER_SKIP_DOWNLOAD: "true"
+          PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: "true"
 
       - name: Deploy to Vercel
         run: |
