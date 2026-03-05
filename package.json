@@ -7,6 +7,8 @@
   "license": "MIT",
   "scripts": {
     "dev": "turbo run dev",
+    "dev:frontend": "turbo run dev --filter=@drymdf/frontend",
+    "dev:backend": "turbo run dev --filter=@drymdf/backend",
     "build": "turbo run build",
     "lint": "turbo run lint",
     "test": "turbo run test",

@@ -1,0 +1,71 @@
+name: Deploy Frontend to Vercel
+
+on:
+  push:
+    branches: [development]
+    paths:
+      - "apps/frontend/**"
+      - "packages/shared/**"
+      - ".github/workflows/deploy-frontend-dev.yml"
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set Vercel env vars (trim secrets to remove stray newlines)
+        run: |
+          echo "VERCEL_ORG_ID=$(echo '${{ secrets.VERCEL_ORG_ID }}' | tr -d '[:space:]')" >> $GITHUB_ENV
+          echo "VERCEL_PROJECT_ID=$(echo '${{ secrets.VERCEL_PROJECT_ID }}' | tr -d '[:space:]')" >> $GITHUB_ENV
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+
+      - name: Install Vercel CLI
+        run: pnpm add -g vercel@latest
+
+      - name: Validate Vercel secrets
+        run: |
+          missing=""
+          [ -z "${{ secrets.VERCEL_TOKEN }}" ]        && missing="$missing\n  ❌ VERCEL_TOKEN"
+          [ -z "${{ secrets.VERCEL_ORG_ID }}" ]       && missing="$missing\n  ❌ VERCEL_ORG_ID"
+          [ -z "${{ secrets.VERCEL_PROJECT_ID }}" ]   && missing="$missing\n  ❌ VERCEL_PROJECT_ID"
+          [ -z "${{ secrets.BACKEND_DEV_URL }}" ]     && missing="$missing\n  ❌ BACKEND_DEV_URL"
+          [ -z "${{ secrets.FRONTEND_DEV_URL }}" ]    && missing="$missing\n  ❌ FRONTEND_DEV_URL"
+          if [ -n "$missing" ]; then
+            echo "Missing GitHub secrets — go to Settings → Secrets and variables → Actions:"
+            echo -e "$missing"
+            echo ""
+            echo "⚠️  VERCEL_TOKEN must be a Personal Access Token from vercel.com/account/tokens"
+            echo "   NOT a JWT (avoid tokens containing '.' or '-' characters)"
+            exit 1
+          fi
+          echo "✅ All required secrets present"
+
+      - name: Pull Vercel Environment
+        run: vercel pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Build Project
+        run: vercel build --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          NEXT_PUBLIC_API_URL: ${{ secrets.BACKEND_DEV_URL }}/api
+          NEXT_PUBLIC_WS_URL: ${{ secrets.BACKEND_DEV_URL }}
+          PUPPETEER_SKIP_DOWNLOAD: "true"
+          PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: "true"
+
+      - name: Deploy to Vercel
+        run: |
+          vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }}
+          echo "### Frontend (Dev) Deployed! :rocket:" >> $GITHUB_STEP_SUMMARY
+          echo "URL: ${{ secrets.FRONTEND_DEV_URL }}" >> $GITHUB_STEP_SUMMARY
