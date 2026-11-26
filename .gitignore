@@ -1,5 +1,6 @@
 # Dependencies
 node_modules
+/.pnpm-store/
 .pnp
 .pnp.js
 
@@ -57,3 +58,4 @@ Thumbs.db
 .actrc
 /.agents
 /.claude
+/graphify-out/
