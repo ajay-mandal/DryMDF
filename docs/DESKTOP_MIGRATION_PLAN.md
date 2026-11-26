@@ -102,7 +102,7 @@ pnpm install --frozen-lockfile
 pnpm --filter @drymdf/desktop make
 ```
 
-Open `apps/desktop/out/make/DryMDF-mac-arm64.dmg`, drag DryMDF into Applications, and launch it. If macOS blocks the first launch because it cannot verify the developer, try opening DryMDF first, then use **System Settings → Privacy & Security → Open Anyway**. [Apple's installation instructions](https://support.apple.com/en-us/102445)
+Open `apps/desktop/out/make/DryMDF-<version>-arm64.dmg`, drag DryMDF into Applications, and launch it. If macOS blocks the first launch because it cannot verify the developer, try opening DryMDF first, then use **System Settings → Privacy & Security → Open Anyway**. [Apple's installation instructions](https://support.apple.com/en-us/102445)
 
 The build applies a local ad-hoc signature, verifies the app bundle, runs the packaged executable in headless mode, and writes a `.sha256` file next to the DMG. The direct download remains unnotarized.
 
