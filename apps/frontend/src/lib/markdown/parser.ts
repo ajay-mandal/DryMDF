@@ -10,14 +10,19 @@ import rehypeStringify from "rehype-stringify";
 /**
  * Parse markdown to HTML with GFM, math, and code highlighting support
  */
-export async function parseMarkdown(content: string): Promise<string> {
+export async function parseMarkdown(
+  content: string,
+  safe = false,
+): Promise<string> {
   try {
     // Extract Mermaid diagrams and replace with placeholders
     const mermaidDiagrams: string[] = [];
+    const safeMarker = safe ? `drymdf${crypto.randomUUID()}` : "";
     const mermaidRegex = /```mermaid\n([\s\S]*?)```/g;
     const processedMarkdown = content.replace(mermaidRegex, (_, diagram) => {
       const index = mermaidDiagrams.length;
       mermaidDiagrams.push(diagram.trim());
+      if (safe) return `\n\n${safeMarker}-${index}\n\n`;
       return `<!--MERMAID_${index}-->`;
     });
 
@@ -25,27 +30,30 @@ export async function parseMarkdown(content: string): Promise<string> {
       .use(remarkParse)
       .use(remarkGfm)
       .use(remarkMath)
-      .use(remarkRehype, { allowDangerousHtml: true })
+      .use(remarkRehype, { allowDangerousHtml: !safe })
       .use(rehypeKatex, {
         strict: false,
-        trust: true,
+        trust: !safe,
         throwOnError: false,
       })
       .use(rehypeHighlight)
-      .use(rehypeStringify, { allowDangerousHtml: true })
+      .use(rehypeStringify, { allowDangerousHtml: !safe })
       .process(processedMarkdown);
 
     let html = String(result);
 
     // Replace Mermaid placeholders with data-attribute divs for client-side rendering
     mermaidDiagrams.forEach((diagram, index) => {
-      const placeholder = `<!--MERMAID_${index}-->`;
+      const placeholder = safe
+        ? `<p>${safeMarker}-${index}</p>`
+        : `<!--MERMAID_${index}-->`;
       const mermaidDiv = `<div class="mermaid-diagram" data-chart="${encodeURIComponent(diagram)}" data-id="${index}"></div>`;
       html = html.replace(placeholder, mermaidDiv);
     });
 
     return html;
   } catch (error) {
+    if (safe) throw error;
     console.error("Markdown parsing error:", error);
     return `<pre class="error">Error parsing markdown: ${error instanceof Error ? error.message : "Unknown error"}</pre>`;
   }

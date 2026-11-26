@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import { Header } from "@/components/layout/header";
 import { SplitPane } from "@/components/layout/split-pane";
 import { MarkdownEditor } from "@/components/editor/markdown-editor";
@@ -8,11 +9,25 @@ import { MarkdownPreview } from "@/components/preview/markdown-preview";
 import { useEditorStore } from "@/stores/editor-store";
 import { useExportStore } from "@/stores/export-store";
 import { apiClient } from "@/lib/api/client";
+import {
+  exportNotificationsEnabled,
+  hasExportNotificationPreference,
+  renderDesktopHtml,
+  renderDesktopPdf,
+} from "@/lib/desktop";
 import { useMarkdownFileUpload } from "@/hooks/use-markdown-file-upload";
 import { toast } from "sonner";
 
+const DesktopEditor =
+  process.env.NEXT_PUBLIC_DRYMDF_DESKTOP === "1"
+    ? dynamic(() => import("@/components/layout/desktop-editor"), {
+        ssr: false,
+      })
+    : null;
+
 export default function EditorPage() {
-  const { content, filename, setContent, setFilename } = useEditorStore();
+  const { content, filename, setContent, setFilename, setDesktopDocument } =
+    useEditorStore();
   const { pdfOptions, setExporting } = useExportStore();
   const [previewMode, setPreviewMode] = useState<"markdown" | "pdf">(
     "markdown",
@@ -21,6 +36,7 @@ export default function EditorPage() {
     "saved",
   );
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
+  const [offerNotifications, setOfferNotifications] = useState(false);
   const hasMountedRef = useRef(false);
 
   useEffect(() => {
@@ -63,6 +79,7 @@ export default function EditorPage() {
   const { handleUploadMarkdownFile } = useMarkdownFileUpload({
     onContentLoaded: setContent,
     onFilenameLoaded: setFilename,
+    onDesktopDocumentLoaded: setDesktopDocument,
   });
 
   const handleExport = async (
@@ -74,6 +91,54 @@ export default function EditorPage() {
 
     try {
       setExporting(true);
+
+      const desktop = window.drymdfDesktop;
+      if (desktop) {
+        const toastId = "desktop-export";
+        toast.loading("Preparing export…", { id: toastId });
+        try {
+          const { desktopDocumentId } = useEditorStore.getState();
+          let data: string | ArrayBuffer = content;
+          if (format === "pdf") {
+            const pdf = await renderDesktopPdf(
+              content,
+              pdfOptions,
+              desktopDocumentId,
+            );
+            data = await pdf.arrayBuffer();
+          } else if (format === "html") {
+            data = await renderDesktopHtml(content, desktopDocumentId);
+          }
+          const saved = await desktop.saveDocument(
+            filename || "document",
+            `.${format}`,
+            data,
+          );
+          if (saved) {
+            toast.success("Document saved", { id: toastId });
+            if (format === "pdf") {
+              if (exportNotificationsEnabled()) {
+                void desktop.notify("export").catch(() => undefined);
+              } else if (!hasExportNotificationPreference()) {
+                setOfferNotifications(true);
+              }
+            }
+          } else {
+            toast.dismiss(toastId);
+          }
+        } catch (error) {
+          toast.error("Could not save the document", {
+            id: toastId,
+            description:
+              error instanceof Error
+                ? error.message
+                : "Choose another location and try again.",
+          });
+        } finally {
+          setExporting(false);
+        }
+        return;
+      }
 
       if (format === "md") {
         const markdownFilename = ensureExtension(filename || "document", ".md");
@@ -193,6 +258,18 @@ export default function EditorPage() {
       setExporting(false);
     }
   };
+
+  if (DesktopEditor) {
+    return (
+      <DesktopEditor
+        offerNotifications={offerNotifications}
+        onNotificationDecision={() => setOfferNotifications(false)}
+        onExport={handleExport}
+        onPreviewModeChange={setPreviewMode}
+        pdfMode={previewMode === "pdf"}
+      />
+    );
+  }
 
   return (
     <div className="h-dvh w-full flex flex-col overflow-hidden bg-slate-50 dark:bg-slate-900">

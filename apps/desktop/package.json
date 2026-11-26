@@ -1,0 +1,22 @@
+{
+  "name": "@drymdf/desktop",
+  "productName": "DryMDF",
+  "version": "0.1.0",
+  "description": "Offline Markdown editor and PDF exporter for macOS",
+  "author": "Ajay Mandal",
+  "license": "MIT",
+  "private": true,
+  "main": "main.cjs",
+  "engines": {
+    "node": "^22.12.0"
+  },
+  "scripts": {
+    "build": "pnpm --filter @drymdf/frontend exec tsc ../backend/src/modules/pdf/print-layout.ts --outDir ../desktop/build --skipLibCheck --target es2022 --module commonjs && DRYMDF_DESKTOP=1 pnpm --filter @drymdf/frontend build",
+    "start": "pnpm build && electron-forge start",
+    "make": "pnpm build && electron-forge package --platform=darwin --arch=arm64 && sh make-dmg.sh"
+  },
+  "devDependencies": {
+    "@electron-forge/cli": "7.11.2",
+    "electron": "45.4.1"
+  }
+}

@@ -13,6 +13,8 @@ export function UploadMarkdownButton({
   onUploadMarkdownFile,
 }: UploadMarkdownButtonProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const desktop = process.env.NEXT_PUBLIC_DRYMDF_DESKTOP === "1";
+  const label = desktop ? "Open Markdown file" : "Upload md file";
 
   return (
     <>
@@ -35,13 +37,15 @@ export function UploadMarkdownButton({
         variant="outline"
         size="sm"
         className="group relative h-9 gap-1.5 px-2 sm:px-3 text-xs font-medium"
-        aria-label="Upload md file"
+        aria-label={label}
         onClick={() => fileInputRef.current?.click()}
       >
         <Upload className="h-4 w-4" />
-        <span className="hidden min-[420px]:inline">Upload</span>
+        <span className="hidden min-[420px]:inline">
+          {desktop ? "Open" : "Upload"}
+        </span>
         <span className="pointer-events-none absolute left-1/2 top-full z-10 mt-2 -translate-x-1/2 rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] font-medium text-slate-700 opacity-0 shadow-sm transition-opacity duration-100 group-hover:opacity-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
-          Upload md file
+          {label}
         </span>
       </Button>
     </>

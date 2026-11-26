@@ -1,0 +1,15 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "border-accent-on-rounded",
+        "value": "*",
+        "files": ["apps/frontend/src/components/editor/markdown-editor.tsx"],
+        "createdAt": "2026-11-25T18:38:19.386Z",
+        "reason": "Codex: the rounded shape and bottom border draw the rotating loading arc already present on main."
+      }
+    ]
+  }
+}

@@ -30,6 +30,86 @@ interface HeaderProps {
   lastSavedAt?: Date | null;
 }
 
+export function PdfSettings() {
+  const { pdfOptions, updatePdfOptions } = useExportStore();
+  const pageNumbersEnabled = pdfOptions.showHeaderFooter ?? false;
+  const pageNumberAlign = pdfOptions.pageNumberAlign ?? "center";
+
+  return (
+    <>
+      <PageFormatSelector />
+      <PageColorSelector />
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant={pageNumbersEnabled ? "secondary" : "outline"}
+            size="sm"
+            className="h-9 gap-1.5 px-2 sm:px-3 text-xs font-medium"
+            title="Page numbering options"
+          >
+            <span className="hidden min-[420px]:inline">Page Numbering</span>
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-56">
+          <DropdownMenuLabel className="text-xs text-slate-500 dark:text-slate-400">
+            Page Numbering
+          </DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          <DropdownMenuLabel className="text-xs text-slate-500 dark:text-slate-400">
+            Status
+          </DropdownMenuLabel>
+          <DropdownMenuRadioGroup
+            value={pageNumbersEnabled ? "enabled" : "disabled"}
+            onValueChange={(value) =>
+              updatePdfOptions({
+                showHeaderFooter: value === "enabled",
+              })
+            }
+          >
+            <DropdownMenuRadioItem
+              value="enabled"
+              className="data-[state=checked]:text-emerald-600 dark:data-[state=checked]:text-emerald-400"
+            >
+              Enable
+            </DropdownMenuRadioItem>
+            <DropdownMenuRadioItem
+              value="disabled"
+              className="data-[state=checked]:text-rose-600 dark:data-[state=checked]:text-rose-400"
+            >
+              Disable
+            </DropdownMenuRadioItem>
+          </DropdownMenuRadioGroup>
+          <DropdownMenuSeparator />
+          <DropdownMenuLabel className="text-xs text-slate-500 dark:text-slate-400">
+            Alignment
+          </DropdownMenuLabel>
+          <DropdownMenuRadioGroup
+            value={pageNumberAlign}
+            onValueChange={(value) =>
+              updatePdfOptions({
+                pageNumberAlign: value as "left" | "center" | "right",
+              })
+            }
+          >
+            <DropdownMenuRadioItem value="left" disabled={!pageNumbersEnabled}>
+              Left
+            </DropdownMenuRadioItem>
+            <DropdownMenuRadioItem
+              value="center"
+              disabled={!pageNumbersEnabled}
+            >
+              Center
+            </DropdownMenuRadioItem>
+            <DropdownMenuRadioItem value="right" disabled={!pageNumbersEnabled}>
+              Right
+            </DropdownMenuRadioItem>
+          </DropdownMenuRadioGroup>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </>
+  );
+}
+
 export function Header({
   filename,
   onExport,
@@ -39,10 +119,6 @@ export function Header({
   autoSaveStatus,
   lastSavedAt,
 }: HeaderProps) {
-  const { pdfOptions, updatePdfOptions } = useExportStore();
-  const pageNumbersEnabled = pdfOptions.showHeaderFooter ?? false;
-  const pageNumberAlign = pdfOptions.pageNumberAlign ?? "center";
-
   const savedTimeLabel = lastSavedAt
     ? new Intl.DateTimeFormat("en-GB", {
         hour: "2-digit",
@@ -92,87 +168,7 @@ export function Header({
         )}
         {showExport && (
           <>
-            {showPdfSettings && (
-              <>
-                <PageFormatSelector />
-                <PageColorSelector />
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant={pageNumbersEnabled ? "secondary" : "outline"}
-                      size="sm"
-                      className="h-9 gap-1.5 px-2 sm:px-3 text-xs font-medium"
-                      title="Page numbering options"
-                    >
-                      <span className="hidden min-[420px]:inline">
-                        Page Numbering
-                      </span>
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-56">
-                    <DropdownMenuLabel className="text-xs text-slate-500 dark:text-slate-400">
-                      Page Numbering
-                    </DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuLabel className="text-xs text-slate-500 dark:text-slate-400">
-                      Status
-                    </DropdownMenuLabel>
-                    <DropdownMenuRadioGroup
-                      value={pageNumbersEnabled ? "enabled" : "disabled"}
-                      onValueChange={(value) =>
-                        updatePdfOptions({
-                          showHeaderFooter: value === "enabled",
-                        })
-                      }
-                    >
-                      <DropdownMenuRadioItem
-                        value="enabled"
-                        className="data-[state=checked]:text-emerald-600 dark:data-[state=checked]:text-emerald-400"
-                      >
-                        Enable
-                      </DropdownMenuRadioItem>
-                      <DropdownMenuRadioItem
-                        value="disabled"
-                        className="data-[state=checked]:text-rose-600 dark:data-[state=checked]:text-rose-400"
-                      >
-                        Disable
-                      </DropdownMenuRadioItem>
-                    </DropdownMenuRadioGroup>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuLabel className="text-xs text-slate-500 dark:text-slate-400">
-                      Alignment
-                    </DropdownMenuLabel>
-                    <DropdownMenuRadioGroup
-                      value={pageNumberAlign}
-                      onValueChange={(value) =>
-                        updatePdfOptions({
-                          pageNumberAlign: value as "left" | "center" | "right",
-                        })
-                      }
-                    >
-                      <DropdownMenuRadioItem
-                        value="left"
-                        disabled={!pageNumbersEnabled}
-                      >
-                        Left
-                      </DropdownMenuRadioItem>
-                      <DropdownMenuRadioItem
-                        value="center"
-                        disabled={!pageNumbersEnabled}
-                      >
-                        Center
-                      </DropdownMenuRadioItem>
-                      <DropdownMenuRadioItem
-                        value="right"
-                        disabled={!pageNumbersEnabled}
-                      >
-                        Right
-                      </DropdownMenuRadioItem>
-                    </DropdownMenuRadioGroup>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </>
-            )}
+            {showPdfSettings && <PdfSettings />}
             {onExport && (
               <ExportDialog
                 onExport={onExport}
