@@ -25,7 +25,7 @@ services:
       - PORT=4000
       - REDIS_HOST=redis
       - REDIS_PORT=6379
-      - CORS_ORIGIN=http://localhost:3000
+      - CORS_ORIGIN=http://localhost:3000,https://drymdf-dev.ajaymandal.com,https://drymdf.ajaymandal.com
     depends_on:
       redis:
         condition: service_healthy
