@@ -19,18 +19,18 @@ The first release targets **Apple Silicon** and uses a **free, unnotarized DMG**
 
 Update each row as work moves through Pending, In progress, and Done. Record the build or PR and the verification result before marking a row Done.
 
-| ID     | Work                                                                                                                 | Depends on                    | Estimate | Status  | Evidence                                                                      |
-| ------ | -------------------------------------------------------------------------------------------------------------------- | ----------------------------- | -------- | ------- | ----------------------------------------------------------------------------- |
-| MAC-01 | Package the editor and prove a local multi-page PDF export from an installed Apple Silicon build                     | —                             | 1–2 days | Done    | Local DMG smoke test below                                                    |
-| MAC-02 | Wire local PDF preview and PDF, HTML, and Markdown exports. Preserve existing export settings and replace CDN assets | MAC-01                        | 2–3 days | Done    | Preview and export share the web print layout. Standalone HTML opened offline |
-| MAC-03 | Add native file dialogs, draft recovery, and safe handling of imported content and local images                      | MAC-01                        | 1–2 days | Done    | Native save, Unicode paths, image resolution, and draft recovery verified     |
-| MAC-04 | Produce a repeatable ARM64 DMG build and write install instructions                                                  | MAC-01                        | 1 day    | Done    | Build and install steps below. DMG checksum and mount verified                |
-| MAC-05 | Verify the downloaded DMG on a clean Mac, fix release blockers, and publish the tested artifact                      | MAC-04, MAC-06 through MAC-10 | TBD      | Pending | Single-file build verified locally. Verify the expanded MVP on the final DMG  |
-| MAC-06 | Create and reopen workspaces with multiple Markdown documents and per-file draft recovery                            | MAC-03                        | TBD      | Done    | Tested same-name drafts, relaunch, save isolation, and recovery below         |
-| MAC-07 | Configure and test Ollama, LM Studio, and hosted OpenAI-compatible AI providers                                      | MAC-03                        | TBD      | Planned | Local and hosted configuration designs                                        |
-| MAC-08 | Chat with AI in the editor and preview, apply, or undo suggested Markdown edits                                      | MAC-06, MAC-07                | TBD      | Planned | Chat, context selection, and review designs                                   |
-| MAC-09 | Apply the desktop identity, window layout, start screen, and first-launch design                                     | MAC-01, MAC-03                | TBD      | Done    | Local renderer and mounted-DMG smoke checks below                             |
-| MAC-10 | Implement the designed PDF page setup, export sheets, and recovery                                                   | MAC-02, MAC-09                | TBD      | Planned | Penpot pages 03–04. The Settings page and notification offer are in place.    |
+| ID     | Work                                                                                                                 | Depends on                    | Estimate | Status  | Evidence                                                                        |
+| ------ | -------------------------------------------------------------------------------------------------------------------- | ----------------------------- | -------- | ------- | ------------------------------------------------------------------------------- |
+| MAC-01 | Package the editor and prove a local multi-page PDF export from an installed Apple Silicon build                     | —                             | 1–2 days | Done    | Local DMG smoke test below                                                      |
+| MAC-02 | Wire local PDF preview and PDF, HTML, and Markdown exports. Preserve existing export settings and replace CDN assets | MAC-01                        | 2–3 days | Done    | Preview and export share the web print layout. Standalone HTML opened offline   |
+| MAC-03 | Add native file dialogs, draft recovery, and safe handling of imported content and local images                      | MAC-01                        | 1–2 days | Done    | Native save, Unicode paths, image resolution, and draft recovery verified       |
+| MAC-04 | Produce a repeatable ARM64 DMG build and write install instructions                                                  | MAC-01                        | 1 day    | Done    | Build and install steps below. DMG checksum and mount verified                  |
+| MAC-05 | Verify the downloaded DMG on a clean Mac, fix release blockers, and publish the tested artifact                      | MAC-04, MAC-06 through MAC-10 | TBD      | Pending | Single-file build verified locally. Verify the expanded MVP on the final DMG    |
+| MAC-06 | Create and reopen workspaces with multiple Markdown documents and per-file draft recovery                            | MAC-03                        | TBD      | Done    | Tested same-name drafts, relaunch, save isolation, and recovery below           |
+| MAC-07 | Configure and test Ollama, LM Studio, and hosted OpenAI-compatible AI providers                                      | MAC-03                        | TBD      | Planned | Local and hosted configuration designs                                          |
+| MAC-08 | Chat with AI in the editor and preview, apply, or undo suggested Markdown edits                                      | MAC-06, MAC-07                | TBD      | Planned | Chat, context selection, and review designs                                     |
+| MAC-09 | Apply the desktop identity, window layout, start screen, and first-launch design                                     | MAC-01, MAC-03                | TBD      | Done    | Local renderer and mounted-DMG smoke checks below                               |
+| MAC-10 | Implement the designed PDF page setup, export sheets, and recovery                                                   | MAC-02, MAC-09                | TBD      | Done    | Page setup, manual preview states, export sheets, recovery, and ARM64 DMG below |
 
 The previous 6–9 day estimate covered the single-file build. Estimate the expanded launch scope after a prototype verifies file persistence, streaming on both local providers, and credential storage across DMG updates.
 
@@ -135,6 +135,12 @@ The build applies a local ad-hoc signature, verifies the app bundle, runs the pa
 - [ ] Publish the exact tested DMG with its SHA-256 checksum, supported macOS version, and install steps. If macOS blocks first launch because it cannot verify the developer, direct users to **System Settings → Privacy & Security → Open Anyway** after they try to open DryMDF. [Apple's installation instructions](https://support.apple.com/en-us/102445)
 
 ## Verification log
+
+### PDF page setup, export sheets, and recovery, 27 November 2026
+
+- Implemented inline PDF page setup (paper size, portrait/landscape orientation, margin presets/custom display) and manual preview lifecycle (**No PDF preview yet / Generate Preview**, **Preview is out of date / Refresh PDF**) backed by shared `getDesktopPrintLayout` styles and Electron `printToPDF` options (`ecd2ae0`).
+- Implemented the macOS export sheet (`b4f7234`) with editable filename, PDF/HTML/Markdown format selection, native folder destination picker, real progress updates, completion summary with **Export Again** and **Show in Finder** via opaque main-process export handles, and save-error recovery (**Retry**, **Choose Folder**) preserving captured document source and export selections.
+- Verified with unit tests (`print-layout.spec.ts`, `pdf-preview-snapshot.test.mjs`, `exports.test.cjs`), workspace lint, Prettier formatting, TypeScript checks, web/desktop builds, Electron smoke testing (cancel, write failure/recovery, Markdown/HTML/PDF outputs, Finder reveal, notification offer, and landscape A4 parity via `pdfinfo`), and packaged ARM64 DMG (`DryMDF-0.1.0-arm64.dmg`, SHA-256 `d6d267367325a08947334ad91ac250174af6039276a73dc0be73b310733508c8`) signature and mount checks.
 
 ### Workspaces, Settings, and navigation, 26 November 2026
 
