@@ -18,6 +18,20 @@ export type DiskDocument =
   | { status: "missing" }
   | { status: "available"; document: DesktopDocument };
 
+export type DesktopExportFormat = "pdf" | "html" | "md";
+
+export interface SavedDesktopExport {
+  status: "saved";
+  name: string;
+  folder: string;
+  handle: string;
+}
+
+type DesktopExportResult =
+  | SavedDesktopExport
+  | { status: "canceled" | "invalid" }
+  | { status: "failed"; name?: string; folder?: string };
+
 declare global {
   interface Window {
     drymdfDesktop?: {
@@ -39,11 +53,18 @@ declare global {
       listRecents: () => Promise<RecentDocument[]>;
       reopenMarkdown: (id: string) => Promise<DesktopDocument>;
       readImage: (id: string, source: string) => Promise<string | null>;
+      chooseExportFolder: () => Promise<
+        { status: "chosen"; folder: string } | { status: "canceled" | "failed" }
+      >;
       saveDocument: (
+        requestId: string,
         filename: string,
-        extension: ".pdf" | ".html" | ".md",
+        format: DesktopExportFormat,
         data: string | ArrayBuffer,
-      ) => Promise<boolean>;
+        onSaving: () => void,
+      ) => Promise<DesktopExportResult>;
+      revealExport: (handle: string) => Promise<boolean>;
+      releaseExport: (handle: string) => Promise<void>;
       notify: (type: "test" | "export") => Promise<boolean>;
     };
   }

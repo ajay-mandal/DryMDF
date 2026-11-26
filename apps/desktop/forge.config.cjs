@@ -25,6 +25,8 @@ module.exports = {
         "/main.cjs",
         "/preload.cjs",
         "/documents.cjs",
+        "/exports.cjs",
+        "/atomic-file.cjs",
       ].includes(path),
     extraResource: [
       join(frontend, "out"),

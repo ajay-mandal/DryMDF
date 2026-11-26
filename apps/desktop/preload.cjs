@@ -20,7 +20,26 @@ contextBridge.exposeInMainWorld("drymdfDesktop", {
   reopenMarkdown: (id) => ipcRenderer.invoke("drymdf:reopen-markdown", id),
   readImage: (id, source) =>
     ipcRenderer.invoke("drymdf:read-image", id, source),
-  saveDocument: (filename, extension, data) =>
-    ipcRenderer.invoke("drymdf:save-document", filename, extension, data),
+  chooseExportFolder: () => ipcRenderer.invoke("drymdf:choose-export-folder"),
+  saveDocument: async (requestId, filename, format, data, onSaving) => {
+    const listener = (_event, id) => {
+      if (id === requestId) onSaving();
+    };
+    ipcRenderer.on("drymdf:export-saving", listener);
+    try {
+      return await ipcRenderer.invoke(
+        "drymdf:save-document",
+        requestId,
+        filename,
+        format,
+        data,
+      );
+    } finally {
+      ipcRenderer.removeListener("drymdf:export-saving", listener);
+    }
+  },
+  revealExport: (handle) => ipcRenderer.invoke("drymdf:reveal-export", handle),
+  releaseExport: (handle) =>
+    ipcRenderer.invoke("drymdf:release-export", handle),
   notify: (type) => ipcRenderer.invoke("drymdf:notify", type),
 });

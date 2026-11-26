@@ -19,8 +19,20 @@ type PreviewMode = "markdown" | "pdf";
 type Snapshot = ReturnType<typeof capturePdfPreview>;
 type Result = { snapshot: Snapshot; url?: string };
 
+export function desktopPageSetup(options: PdfOptions): string {
+  return `${paperSizes[options.format ?? "a4"]} · ${orientations[options.orientation ?? "portrait"]}`;
+}
+
 export function desktopPdfStatus(options: PdfOptions): string {
-  return `${paperSizes[options.format ?? "a4"]} · ${orientations[options.orientation ?? "portrait"]} · 100%`;
+  return `${desktopPageSetup(options)} · 100%`;
+}
+
+export function desktopMarginPreset(pdfOptions: PdfOptions) {
+  return Object.entries(marginPresets).find(([, value]) =>
+    marginSides.every(
+      (side) => (pdfOptions.margins?.[side] || "20mm") === value,
+    ),
+  )?.[0];
 }
 
 interface DesktopPreviewProps {
@@ -47,11 +59,7 @@ export function DesktopPreview({
   const stale = snapshot !== null && isPdfPreviewStale(snapshot, current);
   const settled = result?.snapshot === snapshot ? result : null;
   const generating = snapshot !== null && !settled;
-  const marginPreset = Object.entries(marginPresets).find(([, value]) =>
-    marginSides.every(
-      (side) => (pdfOptions.margins?.[side] || "20mm") === value,
-    ),
-  )?.[0];
+  const marginPreset = desktopMarginPreset(pdfOptions);
 
   useEffect(() => {
     if (!snapshot) return;

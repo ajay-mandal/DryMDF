@@ -1,14 +1,6 @@
 const { createHash, randomUUID } = require("node:crypto");
 const { app, BrowserWindow, dialog } = require("electron");
-const {
-  readFile,
-  realpath,
-  chmod,
-  rename,
-  rm,
-  stat,
-  writeFile,
-} = require("node:fs/promises");
+const { readFile, realpath, stat } = require("node:fs/promises");
 const {
   basename,
   dirname,
@@ -20,6 +12,8 @@ const {
   sep,
 } = require("node:path");
 
+const { replaceFile } = require("./atomic-file.cjs");
+
 const imageTypes = {
   ".gif": "image/gif",
   ".jpeg": "image/jpeg",
@@ -27,22 +21,9 @@ const imageTypes = {
   ".png": "image/png",
   ".webp": "image/webp",
 };
-const exportTypes = { ".md": "Markdown", ".html": "HTML", ".pdf": "PDF" };
 
 function documentStatePath() {
   return join(app.getPath("userData"), "document-folder.json");
-}
-
-async function replaceFile(path, data, { mode, beforeRename } = {}) {
-  const temporary = join(dirname(path), `.drymdf-${randomUUID()}`);
-  try {
-    await writeFile(temporary, data, { flag: "wx", mode });
-    if (mode !== undefined) await chmod(temporary, mode);
-    await beforeRename?.();
-    await rename(temporary, path);
-  } finally {
-    await rm(temporary, { force: true });
-  }
 }
 
 async function rememberedDocuments() {
@@ -297,36 +278,6 @@ async function readImage(id, source) {
   }
 }
 
-async function saveDocument(sender, filename, extension, data) {
-  if (
-    !Object.hasOwn(exportTypes, extension) ||
-    typeof filename !== "string" ||
-    !filename ||
-    filename !== basename(filename) ||
-    filename.includes("\0")
-  ) {
-    throw new Error("Enter a valid export filename.");
-  }
-  const name = filename.toLowerCase().endsWith(extension)
-    ? filename
-    : filename + extension;
-  const { canceled, filePath } = await dialog.showSaveDialog(
-    BrowserWindow.fromWebContents(sender),
-    {
-      defaultPath: name,
-      filters: [
-        { name: exportTypes[extension], extensions: [extension.slice(1)] },
-      ],
-    },
-  );
-  if (canceled || !filePath) return false;
-  await replaceFile(
-    filePath,
-    typeof data === "string" ? data : Buffer.from(data),
-  );
-  return true;
-}
-
 module.exports = {
   chooseMarkdown,
   chooseWorkspaceFiles,
@@ -337,5 +288,4 @@ module.exports = {
   listRecents,
   reopenMarkdown,
   readImage,
-  saveDocument,
 };

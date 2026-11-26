@@ -846,3 +846,58 @@ body:has(.mac-shell) [data-slot="dialog-overlay"] {
     margin-inline: 2px;
   }
 }
+
+.mac-export-sheet {
+  max-width: 488px;
+}
+.mac-export-fields {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  padding-top: 6px;
+}
+.mac-export-fields input:not([type="radio"]) {
+  border-color: var(--rule);
+  background: var(--paper);
+}
+.mac-export-formats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+}
+.mac-export-formats legend {
+  margin-bottom: 4px;
+  font-weight: 500;
+}
+.mac-export-formats span {
+  display: block;
+  padding: 5px 4px;
+  text-align: center;
+  border: 1px solid var(--rule);
+  border-radius: 7px;
+  cursor: pointer;
+}
+.mac-export-formats input:checked + span {
+  background: var(--selection);
+  border-color: var(--action);
+}
+.mac-export-formats input:focus-visible + span {
+  outline: 2px solid var(--action);
+  outline-offset: 2px;
+}
+.mac-export-summary {
+  padding: 8px 12px;
+  background: var(--chrome);
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  overflow-wrap: anywhere;
+}
+.mac-export-destination {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+.mac-export-sheet footer {
+  flex-wrap: wrap;
+}

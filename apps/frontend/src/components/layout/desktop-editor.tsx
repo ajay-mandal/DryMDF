@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { MarkdownEditor } from "@/components/editor/markdown-editor";
-import { ExportDialog } from "@/components/export/export-dialog";
+import { DesktopExportSheet } from "@/components/export/desktop-export-sheet";
 import {
   DesktopPreview,
   desktopPdfStatus,
@@ -63,20 +63,11 @@ Bring a wind layer and a paper map.
 Wind picks up along the ridge.`;
 
 interface Props {
-  offerNotifications: boolean;
-  onNotificationDecision: () => void;
-  onExport: (filename: string, format: "md" | "html" | "pdf") => void;
   onPreviewModeChange: (mode: "markdown" | "pdf") => void;
   pdfMode: boolean;
 }
 
-export default function DesktopEditor({
-  offerNotifications,
-  onNotificationDecision,
-  onExport,
-  onPreviewModeChange,
-  pdfMode,
-}: Props) {
+export default function DesktopEditor({ onPreviewModeChange, pdfMode }: Props) {
   const {
     filename,
     content,
@@ -118,6 +109,8 @@ export default function DesktopEditor({
   );
   const [pane, setPane] = useState<"editor" | "preview">("editor");
   const [recent, setRecent] = useState<RecentDocument[]>([]);
+  const [offerNotifications, setOfferNotifications] = useState(false);
+  const [exportFolder, setExportFolder] = useState("Downloads");
   const [busy, setBusy] = useState(false);
   const [openError, setOpenError] = useState("");
   const shell = useRef<HTMLElement>(null);
@@ -330,7 +323,7 @@ export default function DesktopEditor({
       return;
     }
     if (sheet === "welcome") localStorage.setItem(setupKey, "complete");
-    if (sheet === "notifications") onNotificationDecision();
+    if (sheet === "notifications") setOfferNotifications(false);
     setSheet(null);
     focusDocument();
   }
@@ -385,10 +378,11 @@ export default function DesktopEditor({
               </button>
             )}
             {showWorkarea && !sampleReady && (
-              <ExportDialog
-                desktop
-                initialFilename={filename}
-                onExport={onExport}
+              <DesktopExportSheet
+                disabled={unavailable}
+                folder={exportFolder}
+                onFolderChange={setExportFolder}
+                onOfferNotifications={() => setOfferNotifications(true)}
               />
             )}
             <span className="mac-toolbar-divider" aria-hidden="true" />

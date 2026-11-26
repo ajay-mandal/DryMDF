@@ -1,6 +1,7 @@
 const {
   app,
   BrowserWindow,
+  dialog,
   ipcMain,
   net,
   Notification,
@@ -23,8 +24,8 @@ const {
   listRecents,
   reopenMarkdown,
   readImage,
-  saveDocument,
 } = require("./documents.cjs");
+const { createExports } = require("./exports.cjs");
 const { getBaseStyles, getDesktopPrintLayout } = require(
   join(
     app.isPackaged ? process.resourcesPath : join(__dirname, "build"),
@@ -36,6 +37,13 @@ const editorUrl = "drymdf://app/editor/";
 const printDocuments = new Map();
 let documentStyles;
 let lastNotification;
+const exportsService = createExports({
+  parentWindow: (sender) => BrowserWindow.fromWebContents(sender),
+  downloads: () => app.getPath("downloads"),
+  dialog,
+  shell,
+  exportHtml,
+});
 
 protocol.registerSchemesAsPrivileged([
   {
@@ -131,6 +139,7 @@ function createWindow() {
     },
   });
   lockNavigation(window);
+  exportsService.attach(window.webContents);
   void window.loadURL(editorUrl).catch((error) => console.error(error));
   return window;
 }
@@ -277,23 +286,12 @@ app.whenReady().then(() => {
     readImage(id, source),
   );
   handleEditorRequest(
-    "drymdf:save-document",
-    async (sender, filename, extension, data) => {
-      if (
-        extension === ".pdf"
-          ? !(data instanceof ArrayBuffer)
-          : typeof data !== "string"
-      ) {
-        throw new Error("Invalid export data.");
-      }
-      return saveDocument(
-        sender,
-        filename,
-        extension,
-        extension === ".html" ? await exportHtml(data) : data,
-      );
-    },
+    "drymdf:choose-export-folder",
+    exportsService.chooseFolder,
   );
+  handleEditorRequest("drymdf:save-document", exportsService.save);
+  handleEditorRequest("drymdf:reveal-export", exportsService.reveal);
+  handleEditorRequest("drymdf:release-export", exportsService.release);
   handleEditorRequest("drymdf:notify", (_sender, type) => {
     if ((type !== "test" && type !== "export") || !Notification.isSupported())
       return false;
