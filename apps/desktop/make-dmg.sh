@@ -1,6 +1,13 @@
 #!/bin/sh
 set -eu
 
+version="$(node -p 'require("./package.json").version')"
+installer="DryMDF-${version}-arm64.dmg"
+if [ "${1:-}" = "--name" ]; then
+  printf '%s\n' "$installer"
+  exit 0
+fi
+
 staging="$(mktemp -d)"
 trap 'rm -rf "$staging"' EXIT
 
@@ -13,7 +20,7 @@ mkdir -p out/make
 build_output="$(mktemp -d out/make/.drymdf-build.XXXXXX)"
 trap 'rm -rf "$staging" "$build_output"' EXIT
 hdiutil create -volname DryMDF -srcfolder "$staging" -format UDZO \
-  "$build_output/DryMDF-mac-arm64.dmg"
-(cd "$build_output" && shasum -a 256 DryMDF-mac-arm64.dmg > DryMDF-mac-arm64.dmg.sha256)
-mv -f "$build_output/DryMDF-mac-arm64.dmg" out/make/
-mv -f "$build_output/DryMDF-mac-arm64.dmg.sha256" out/make/
+  "$build_output/$installer"
+(cd "$build_output" && shasum -a 256 $installer > $installer.sha256)
+mv -f "$build_output/$installer" out/make/
+mv -f "$build_output/$installer.sha256" out/make/
