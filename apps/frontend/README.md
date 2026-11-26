@@ -31,4 +31,4 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 
 ## Desktop distribution
 
-The renderer ships inside DryMDF for macOS. See the [desktop CI and release guide](../../ci/woodpecker/README.md).
+The renderer ships inside DryMDF for macOS. See the [desktop CI and release guide](../../docs/DESKTOP_CI.md).
