@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { apiClient } from "@/lib/api/client";
-import { isDesktop, renderDesktopPdf } from "@/lib/desktop";
 import { useJobProgress } from "@/hooks/use-job-progress";
 import type { PdfOptions } from "@/types/pdf";
 import {
@@ -26,11 +25,9 @@ function isDarkHexColor(color: string): boolean {
 }
 
 interface PdfPreviewPaneProps {
-  desktopShell?: boolean;
   request: {
     id: number;
     content: string;
-    documentId?: string;
     options: PdfOptions;
   } | null;
   currentPdfOptions: PdfOptions;
@@ -38,7 +35,6 @@ interface PdfPreviewPaneProps {
 }
 
 export function PdfPreviewPane({
-  desktopShell,
   request,
   currentPdfOptions,
   updatePdfOptions,
@@ -59,7 +55,6 @@ export function PdfPreviewPane({
   const [stage, setStage] = useState("idle");
   const [progress, setProgress] = useState(0);
   const [displayProgress, setDisplayProgress] = useState(0);
-  const visiblePdfUrl = desktopShell && !request ? null : exactPdfUrl;
   const [socketClientId, setSocketClientId] = useState("");
   const [isZoomModifierActive, setIsZoomModifierActive] = useState(false);
 
@@ -199,12 +194,6 @@ export function PdfPreviewPane({
 
   useEffect(() => {
     if (!request) {
-      if (desktopShell) {
-        setExactPdfUrl((currentUrl) => {
-          if (currentUrl) URL.revokeObjectURL(currentUrl);
-          return null;
-        });
-      }
       setIsLoading(false);
       setProgress(0);
       setDisplayProgress(0);
@@ -246,26 +235,6 @@ export function PdfPreviewPane({
       setStage("queued");
 
       try {
-        if (isDesktop()) {
-          setStage("processing");
-          const pdf = await renderDesktopPdf(
-            request.content,
-            request.options,
-            request.documentId,
-          );
-          if (cancelled || requestId !== exactPdfRequestRef.current) return;
-
-          const url = URL.createObjectURL(pdf);
-          setExactPdfUrl((currentUrl) => {
-            if (currentUrl) URL.revokeObjectURL(currentUrl);
-            return url;
-          });
-          setProgress(100);
-          setStage("completed");
-          setIsLoading(false);
-          return;
-        }
-
         const clientId = `preview-${requestId}-${Date.now()}`;
         setSocketClientId(clientId);
 
@@ -343,7 +312,7 @@ export function PdfPreviewPane({
     return () => {
       cancelled = true;
     };
-  }, [request, desktopShell]);
+  }, [request]);
 
   useEffect(() => {
     return () => {
@@ -399,29 +368,15 @@ export function PdfPreviewPane({
 
   return (
     <div className="h-full min-h-0 w-full flex flex-col overflow-hidden bg-slate-100 dark:bg-slate-900 relative">
-      <div
-        className={`border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 sm:px-4 py-2 ${desktopShell ? "mac-pdf-tools" : ""}`}
-      >
+      <div className="border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 sm:px-4 py-2">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-3 min-w-0">
             <span className="text-xs font-medium text-slate-700 dark:text-slate-300 whitespace-nowrap">
               {pageDimensions.label}
             </span>
-            {desktopShell ? (
-              <span className="mac-pdf-state" role="status">
-                {stage === "failed"
-                  ? "Preview failed"
-                  : visiblePdfUrl
-                    ? "Ready"
-                    : isLoading
-                      ? "Rendering…"
-                      : ""}
-              </span>
-            ) : (
-              <span className="text-[10px] uppercase tracking-wide text-blue-600 dark:text-blue-400 whitespace-nowrap">
-                {Math.round(displayProgress)}% · {stage}
-              </span>
-            )}
+            <span className="text-[10px] uppercase tracking-wide text-blue-600 dark:text-blue-400 whitespace-nowrap">
+              {Math.round(displayProgress)}% · {stage}
+            </span>
           </div>
 
           <div className="flex items-center gap-2 flex-wrap justify-end">
@@ -432,15 +387,12 @@ export function PdfPreviewPane({
               }
               className="inline-flex items-center gap-1 rounded-md border border-slate-200 dark:border-slate-700 px-2 py-1 hover:bg-slate-100 dark:hover:bg-slate-700/60 transition-colors shrink-0"
               title="Toggle auto text contrast"
-              aria-pressed={desktopShell ? autoTextContrast : undefined}
             >
               <span
                 className={`h-1.5 w-1.5 rounded-full ${autoTextContrast ? "bg-emerald-500" : "bg-slate-400"}`}
               />
               <span className="text-[10px] uppercase tracking-wide text-slate-500 dark:text-slate-400 whitespace-nowrap">
-                {desktopShell
-                  ? "Auto contrast"
-                  : `Auto Contrast: ${autoTextContrast ? "On" : "Off"}`}
+                Auto Contrast: {autoTextContrast ? "On" : "Off"}
               </span>
             </button>
 
@@ -448,7 +400,7 @@ export function PdfPreviewPane({
               className="text-xs text-slate-400 dark:text-slate-500 hidden sm:inline"
               title="Use Ctrl/⌘/Alt + Scroll to zoom in/out"
             >
-              {Math.round(scale * 100)}%{!desktopShell && " zoom"}
+              {Math.round(scale * 100)}% zoom
             </span>
 
             <div className="inline-flex items-center gap-1 rounded-md border border-slate-200 dark:border-slate-700 p-1 shrink-0">
@@ -495,24 +447,23 @@ export function PdfPreviewPane({
 
       <div
         ref={scrollContainerRef}
-        className={`flex-1 min-h-0 overflow-y-auto overscroll-contain relative bg-slate-100 dark:bg-slate-900 ${desktopShell ? "overflow-x-auto" : "overflow-x-hidden"}`}
+        className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain relative bg-slate-100 dark:bg-slate-900"
       >
         <div
           style={{
             minHeight: "100%",
             display: "flex",
             alignItems: "flex-start",
-            justifyContent: desktopShell ? "safe center" : "center",
+            justifyContent: "center",
             padding: `${PREVIEW_GAP}px`,
           }}
         >
           <div
             style={{
               width: `${Math.max(pageWidth * scale, 1)}px`,
-              flexShrink: desktopShell ? 0 : undefined,
             }}
           >
-            {visiblePdfUrl ? (
+            {exactPdfUrl ? (
               <div
                 className="bg-white dark:bg-slate-800 shadow-lg relative"
                 style={{
@@ -522,7 +473,7 @@ export function PdfPreviewPane({
               >
                 <iframe
                   title="Exact PDF Preview"
-                  src={`${visiblePdfUrl}#toolbar=0&navpanes=0&view=FitH`}
+                  src={`${exactPdfUrl}#toolbar=0&navpanes=0&view=FitH`}
                   className="w-full border-0"
                   style={{
                     height: `${Math.max(pageHeight * scale, 1)}px`,
@@ -543,11 +494,7 @@ export function PdfPreviewPane({
               <div className="flex items-center justify-center py-16">
                 <span className="text-sm text-slate-500 dark:text-slate-400">
                   {!request
-                    ? desktopShell
-                      ? "Refresh PDF to preview the current document."
-                      : isDesktop()
-                        ? "Click PDF Preview to render the document."
-                        : "Click PDF Preview to render from backend."
+                    ? "Click PDF Preview to render from backend."
                     : isLoading
                       ? "Rendering exact PDF preview..."
                       : "Waiting for preview generation..."}

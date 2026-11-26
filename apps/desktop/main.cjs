@@ -25,7 +25,7 @@ const {
   readImage,
   saveDocument,
 } = require("./documents.cjs");
-const { getBaseStyles, getDefaultFooter } = require(
+const { getBaseStyles, getDesktopPrintLayout } = require(
   join(
     app.isPackaged ? process.resourcesPath : join(__dirname, "build"),
     "print-layout.js",
@@ -34,7 +34,6 @@ const { getBaseStyles, getDefaultFooter } = require(
 
 const editorUrl = "drymdf://app/editor/";
 const printDocuments = new Map();
-const pageSizes = { a3: "A3", a4: "A4", legal: "Legal" };
 let documentStyles;
 let lastNotification;
 
@@ -125,6 +124,7 @@ function createWindow() {
     trafficLightPosition: { x: 14, y: 16 },
     webPreferences: {
       preload: join(__dirname, "preload.cjs"),
+      plugins: true,
       sandbox: true,
       contextIsolation: true,
       nodeIntegration: false,
@@ -194,13 +194,12 @@ async function printPdf(html, options) {
     },
   });
   lockNavigation(window);
-  const pageColor =
-    typeof options.pageColor === "string" ? options.pageColor : undefined;
+  const { styles, pdfOptions } = getDesktopPrintLayout(options);
   printDocuments.set(
     path,
     renderDocument(
       html,
-      getBaseStyles(pageColor, options.autoTextContrast !== false),
+      styles,
       '<link rel="stylesheet" href="/katex.min.css"><link rel="stylesheet" href="/highlight.css">',
     ),
   );
@@ -210,19 +209,7 @@ async function printPdf(html, options) {
     await window.webContents.executeJavaScript(
       "document.fonts.ready.then(() => true)",
     );
-    const pdf = await window.webContents.printToPDF({
-      printBackground: true,
-      pageSize: Object.hasOwn(pageSizes, options.format)
-        ? pageSizes[options.format]
-        : pageSizes.a4,
-      margins: { top: 0, bottom: 0, left: 0, right: 0 },
-      displayHeaderFooter: options.showHeaderFooter === true,
-      headerTemplate: "<div></div>",
-      footerTemplate: getDefaultFooter(
-        options.pageNumberAlign,
-        options.showTotalPages !== false,
-      ),
-    });
+    const pdf = await window.webContents.printToPDF(pdfOptions);
     return new Uint8Array(pdf).buffer;
   } finally {
     printDocuments.delete(path);

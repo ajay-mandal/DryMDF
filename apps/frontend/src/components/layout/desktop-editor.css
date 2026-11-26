@@ -755,35 +755,60 @@ body:has(.mac-shell) [data-slot="dialog-overlay"] {
 }
 .mac-preview .mac-pdf-settings {
   padding: 8px 0 0;
-  gap: 6px;
+  gap: 6px 8px;
+  align-items: end;
 }
-.mac-preview .mac-pdf-settings button {
-  min-height: 28px;
+.mac-pdf-settings label {
+  display: grid;
+  gap: 3px;
+  color: var(--secondary-ink);
+  font-size: 11px;
+  font-weight: 550;
+}
+.mac-preview .mac-pdf-settings :is(select, button) {
   height: 28px;
   border: 1px solid var(--rule);
   background: var(--paper);
   color: var(--ink);
 }
-.mac-preview .mac-refresh-pdf {
-  margin-left: auto;
-  padding: 0 8px;
-  border-radius: 5px;
+.mac-pdf-settings select {
+  padding: 0 6px;
+  border-radius: 6px;
   font-size: 12px;
 }
-.mac-preview .mac-pdf-settings button:hover {
+.mac-preview .mac-pdf-settings :is(select, button):hover {
   background: var(--selection);
 }
-.mac-preview .mac-pdf-tools {
-  background: var(--paper);
-  border-color: var(--rule);
+.mac-pdf-settings select:focus-visible {
+  outline: 2px solid var(--action);
+  outline-offset: 2px;
 }
-.mac-pdf-tools .mac-pdf-state {
+.mac-pdf-viewer {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+.mac-pdf-empty {
+  display: grid;
+  min-height: 100%;
+  place-content: center;
+  justify-items: center;
+  gap: 12px;
+  padding: 20px;
+  text-align: center;
+  color: var(--ink);
+}
+.mac-pdf-empty h2 {
+  font-size: 14px;
+  font-weight: 600;
+}
+.mac-pdf-empty :is(p, svg) {
   color: var(--secondary-ink);
-  font-size: 11px;
 }
-.mac-pdf-tools button[aria-pressed] span:last-child {
-  text-transform: none;
-  letter-spacing: normal;
+.mac-pdf-empty p {
+  margin-top: 4px;
+  font-size: 12px;
 }
 
 @media (max-width: 839px) {

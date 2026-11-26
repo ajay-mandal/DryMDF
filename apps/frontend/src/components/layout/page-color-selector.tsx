@@ -31,6 +31,7 @@ export function PageColorSelector() {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
+          aria-label={`Page color: ${currentColor.label}`}
           variant="outline"
           size="sm"
           className="h-9 gap-1.5 px-2 sm:px-3 text-xs font-medium"

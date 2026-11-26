@@ -1,5 +1,6 @@
 export interface PdfOptions {
   format?: "a3" | "a4" | "legal";
+  orientation?: "portrait" | "landscape";
   pageColor?: string;
   autoTextContrast?: boolean;
   pageNumberAlign?: "left" | "center" | "right";

@@ -30,14 +30,16 @@ interface HeaderProps {
   lastSavedAt?: Date | null;
 }
 
-export function PdfSettings() {
+export function PdfSettings({
+  hidePaperSize = false,
+}: { hidePaperSize?: boolean } = {}) {
   const { pdfOptions, updatePdfOptions } = useExportStore();
   const pageNumbersEnabled = pdfOptions.showHeaderFooter ?? false;
   const pageNumberAlign = pdfOptions.pageNumberAlign ?? "center";
 
   return (
     <>
-      <PageFormatSelector />
+      {!hidePaperSize && <PageFormatSelector />}
       <PageColorSelector />
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
@@ -45,6 +47,7 @@ export function PdfSettings() {
             variant={pageNumbersEnabled ? "secondary" : "outline"}
             size="sm"
             className="h-9 gap-1.5 px-2 sm:px-3 text-xs font-medium"
+            aria-label="Page numbering options"
             title="Page numbering options"
           >
             <span className="hidden min-[420px]:inline">Page Numbering</span>

@@ -16,7 +16,11 @@ import {
 import { toast } from "sonner";
 import { MarkdownEditor } from "@/components/editor/markdown-editor";
 import { ExportDialog } from "@/components/export/export-dialog";
-import { MarkdownPreview } from "@/components/preview/markdown-preview";
+import {
+  DesktopPreview,
+  desktopPdfStatus,
+} from "@/components/preview/desktop-preview";
+import { useExportStore } from "@/stores/export-store";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -39,7 +43,6 @@ import {
   WorkspaceLibrary,
   WorkspaceRecoveryDialog,
 } from "./desktop-workspaces";
-import { PdfSettings } from "./header";
 import { SplitPane } from "./split-pane";
 import "./desktop-editor.css";
 
@@ -85,6 +88,8 @@ export default function DesktopEditor({
     looseDraft,
     setDesktopDocument,
   } = useEditorStore();
+  const pdfOptions = useExportStore((state) => state.pdfOptions);
+  const [draftVersion, setDraftVersion] = useState(0);
   const workspace = workspaces.find((item) => item.id === workspaceId);
   const workspaceFile =
     workspace && desktopDocumentId
@@ -343,6 +348,7 @@ export default function DesktopEditor({
     if (mayReplace()) {
       useEditorStore.getState().leaveWorkspace();
       setDesktopDocument("", "Untitled");
+      setDraftVersion((version) => version + 1);
       showEditor();
     }
   };
@@ -553,16 +559,17 @@ export default function DesktopEditor({
               }
               right={
                 <section className="mac-preview" aria-label="Document preview">
-                  <MarkdownPreview
-                    documentKey={
+                  <DesktopPreview
+                    markdown={sampleReady ? sample : content}
+                    documentId={desktopDocumentId}
+                    sourceKey={
                       workspaceFile
-                        ? `${workspaceFile.id}:${workspaceFile.locationVersion ?? 0}`
-                        : undefined
+                        ? `${workspaceId}:${workspaceFile.id}:${workspaceFile.locationVersion ?? 0}`
+                        : `draft:${draftVersion}:${desktopDocumentId ?? "untitled"}`
                     }
-                    desktopShell
-                    pdfToolbar={<PdfSettings />}
-                    sampleContent={sampleReady ? sample : undefined}
-                    onPreviewModeChange={onPreviewModeChange}
+                    sample={sampleReady}
+                    mode={pdfMode ? "pdf" : "markdown"}
+                    onModeChange={onPreviewModeChange}
                   />
                 </section>
               }
@@ -661,7 +668,7 @@ export default function DesktopEditor({
           {showWorkarea && (
             <span>
               {pdfMode && !sampleReady
-                ? "PDF preview"
+                ? desktopPdfStatus(pdfOptions)
                 : `Markdown · ${(sampleReady ? sample : content).split("\n").length} lines`}
             </span>
           )}

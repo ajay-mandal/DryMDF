@@ -18,22 +18,73 @@ export function getDefaultFooter(
     `;
 }
 
+interface PrintMargins {
+  top?: string;
+  right?: string;
+  bottom?: string;
+  left?: string;
+}
+
+interface DesktopPrintSettings {
+  format?: unknown;
+  orientation?: unknown;
+  pageColor?: unknown;
+  autoTextContrast?: unknown;
+  margins?: PrintMargins;
+  showHeaderFooter?: unknown;
+  pageNumberAlign?: "left" | "center" | "right";
+  showTotalPages?: unknown;
+}
+
+export function getDesktopPrintLayout(settings: DesktopPrintSettings) {
+  return {
+    styles: getBaseStyles(
+      typeof settings.pageColor === "string" ? settings.pageColor : undefined,
+      settings.autoTextContrast !== false,
+      settings.margins,
+    ),
+    pdfOptions: {
+      printBackground: true,
+      pageSize:
+        settings.format === "a3"
+          ? "A3"
+          : settings.format === "legal"
+            ? "Legal"
+            : "A4",
+      landscape: settings.orientation === "landscape",
+      // The stylesheet's @page rule controls all four margins.
+      margins: { top: 0, bottom: 0, left: 0, right: 0 },
+      displayHeaderFooter: settings.showHeaderFooter === true,
+      headerTemplate: "<div></div>",
+      footerTemplate: getDefaultFooter(
+        settings.pageNumberAlign,
+        settings.showTotalPages !== false,
+      ),
+    },
+  };
+}
+
+function normalizeMargin(value: unknown): string {
+  if (typeof value !== "string") return "20mm";
+  const margin = value.trim().toLowerCase();
+  return /^(?:0|(?:\d{1,3}(?:\.\d{1,4})?|\.\d{1,4})(?:mm|cm|in|px|pt|pc|q))$/.test(
+    margin,
+  )
+    ? margin
+    : "20mm";
+}
+
 export function getBaseStyles(
   pageColor: string = "#ffffff",
   autoTextContrast: boolean = true,
-  margins?: {
-    top: string;
-    right: string;
-    bottom: string;
-    left: string;
-  },
+  margins?: PrintMargins,
 ): string {
   const normalizedPageColor = normalizeHexColor(pageColor);
   const resolvedMargins = {
-    top: margins?.top || "20mm",
-    right: margins?.right || "20mm",
-    bottom: margins?.bottom || "20mm",
-    left: margins?.left || "20mm",
+    top: normalizeMargin(margins?.top),
+    right: normalizeMargin(margins?.right),
+    bottom: normalizeMargin(margins?.bottom),
+    left: normalizeMargin(margins?.left),
   };
   const textColor = autoTextContrast
     ? getContrastTextColor(normalizedPageColor)
