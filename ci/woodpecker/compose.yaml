@@ -1,0 +1,19 @@
+name: drymdf-ci
+services:
+  server:
+    image: woodpeckerci/woodpecker-server:v3.21.0
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8120:8000"
+      - "127.0.0.1:9120:9000"
+    volumes:
+      - data:/var/lib/woodpecker
+    environment:
+      WOODPECKER_HOST: ${WOODPECKER_HOST:?Set the public HTTPS URL}
+      WOODPECKER_GITHUB: "true"
+      WOODPECKER_GITHUB_CLIENT: ${WOODPECKER_GITHUB_CLIENT:?Set the OAuth client ID}
+      WOODPECKER_GITHUB_SECRET: ${WOODPECKER_GITHUB_SECRET:?Set the OAuth secret}
+      WOODPECKER_ADMIN: ajay-mandal
+      WOODPECKER_OPEN: "false"
+volumes:
+  data:

@@ -42,7 +42,7 @@ Build a production-ready, open-source web application that allows users to:
 
 ### Infrastructure
 
-- **Frontend Deployment**: Vercel
+- **Desktop distribution**: Woodpecker CI builds the Electron renderer and packages the macOS DMG for GitHub Releases.
 - **Backend Deployment**: Railway / Render / AWS ECS
 - **Queue & Cache**: Redis (Upstash or Railway)
 - **Storage**: AWS S3 / Cloudflare R2 for generated files

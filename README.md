@@ -131,7 +131,7 @@ pnpm format
 
 - [Project Plan](./docs/PROJECT_PLAN.md)
 - [API Documentation](./docs/API.md)
-- [Deployment Guide](./docs/DEPLOYMENT.md)
+- [Desktop CI and release guide](./ci/woodpecker/README.md)
 
 ## License
 
