@@ -55,3 +55,5 @@ Thumbs.db
 /guides
 .secrets
 .actrc
+/.agents
+/.claude

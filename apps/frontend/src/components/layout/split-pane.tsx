@@ -3,12 +3,13 @@
 import { useState, useRef, useEffect } from "react";
 
 interface SplitPaneProps {
+  compactPane?: "editor" | "preview";
   left: React.ReactNode;
   right: React.ReactNode;
 }
 
-export function SplitPane({ left, right }: SplitPaneProps) {
-  const [leftWidth, setLeftWidth] = useState(50); // percentage
+export function SplitPane({ left, right, compactPane }: SplitPaneProps) {
+  const [leftWidth, setLeftWidth] = useState(compactPane ? 46 : 50); // percentage
   const [isDragging, setIsDragging] = useState(false);
   const [isMobileLayout, setIsMobileLayout] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -20,7 +21,7 @@ export function SplitPane({ left, right }: SplitPaneProps) {
 
   useEffect(() => {
     const handleResize = () => {
-      setIsMobileLayout(window.innerWidth < 1024);
+      setIsMobileLayout(window.innerWidth < (compactPane ? 840 : 1024));
     };
 
     handleResize();
@@ -29,7 +30,7 @@ export function SplitPane({ left, right }: SplitPaneProps) {
     return () => {
       window.removeEventListener("resize", handleResize);
     };
-  }, []);
+  }, [compactPane]);
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -72,9 +73,14 @@ export function SplitPane({ left, right }: SplitPaneProps) {
       <div
         className="h-full min-h-0 overflow-hidden"
         style={
-          isMobileLayout
-            ? { height: "50%", width: "100%" }
-            : { width: `calc(${leftWidth}% - 4px)` }
+          isMobileLayout && compactPane
+            ? {
+                display: compactPane === "editor" ? "block" : "none",
+                width: "100%",
+              }
+            : isMobileLayout
+              ? { height: "50%", width: "100%" }
+              : { width: `calc(${leftWidth}% - 4px)` }
         }
       >
         {left}
@@ -97,9 +103,14 @@ export function SplitPane({ left, right }: SplitPaneProps) {
       <div
         className="h-full min-h-0 overflow-hidden"
         style={
-          isMobileLayout
-            ? { height: "50%", width: "100%" }
-            : { width: `calc(${100 - leftWidth}% - 4px)` }
+          isMobileLayout && compactPane
+            ? {
+                display: compactPane === "preview" ? "block" : "none",
+                width: "100%",
+              }
+            : isMobileLayout
+              ? { height: "50%", width: "100%" }
+              : { width: `calc(${100 - leftWidth}% - 4px)` }
         }
       >
         {right}

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import mermaid from "mermaid";
+import { isDesktop } from "@/lib/desktop";
 
 interface MermaidRendererProps {
   chart: string;
@@ -53,7 +54,7 @@ export function MermaidRenderer({
         mermaid.initialize({
           startOnLoad: false,
           theme: isDarkMode ? "dark" : "default",
-          securityLevel: "loose",
+          securityLevel: isDesktop() ? "strict" : "loose",
           fontFamily: "inherit",
         });
 

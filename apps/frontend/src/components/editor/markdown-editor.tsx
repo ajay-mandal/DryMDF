@@ -2,14 +2,21 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useTheme } from "next-themes";
-import CodeMirror from "@uiw/react-codemirror";
+import CodeMirror, { lineNumbers } from "@uiw/react-codemirror";
 import { markdown } from "@codemirror/lang-markdown";
 import { oneDark } from "@codemirror/theme-one-dark";
 import { useEditorStore } from "@/stores/editor-store";
 
-export function MarkdownEditor() {
+const desktopBuild = process.env.NEXT_PUBLIC_DRYMDF_DESKTOP === "1";
+const markdownExtension = markdown();
+const desktopLineNumbers = lineNumbers({
+  formatNumber: (number) => String(number).padStart(2, "0"),
+});
+
+export function MarkdownEditor({ sampleContent }: { sampleContent?: string }) {
   const { content, setContent, settings } = useEditorStore();
-  const { theme } = useTheme();
+  const { theme, resolvedTheme } = useTheme();
+  const appearance = desktopBuild ? resolvedTheme : theme;
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -37,15 +44,20 @@ export function MarkdownEditor() {
     <div className="h-full w-full overflow-hidden border-r border-slate-200 dark:border-slate-700">
       <div className="h-full">
         <CodeMirror
-          value={content}
+          value={sampleContent ?? content}
+          readOnly={sampleContent !== undefined}
           height="100%"
-          theme={theme === "dark" ? oneDark : "light"}
-          extensions={[markdown()]}
-          onChange={handleChange}
+          theme={appearance === "dark" ? oneDark : "light"}
+          extensions={
+            desktopBuild && settings.showLineNumbers
+              ? [markdownExtension, desktopLineNumbers]
+              : [markdownExtension]
+          }
+          onChange={sampleContent === undefined ? handleChange : undefined}
           className="h-full text-sm"
           basicSetup={{
-            lineNumbers: settings.showLineNumbers,
-            foldGutter: true,
+            lineNumbers: !desktopBuild && settings.showLineNumbers,
+            foldGutter: !desktopBuild,
             dropCursor: true,
             allowMultipleSelections: true,
             indentOnInput: true,

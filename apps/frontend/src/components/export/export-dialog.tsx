@@ -27,11 +27,13 @@ type ExportFormat = "pdf" | "html" | "md";
 interface ExportDialogProps {
   onExport: (filename: string, format: ExportFormat) => void;
   initialFilename?: string;
+  desktop?: boolean;
 }
 
 export function ExportDialog({
   onExport,
   initialFilename = "document",
+  desktop,
 }: ExportDialogProps) {
   const [open, setOpen] = useState(false);
   const [filename, setFilename] = useState(initialFilename);
@@ -59,7 +61,14 @@ export function ExportDialog({
       <DialogTrigger asChild>
         <Button
           disabled={isExporting}
-          className="bg-blue-600 hover:bg-blue-700 text-white dark:bg-blue-600 dark:hover:bg-blue-700 px-2 sm:px-3"
+          aria-label={
+            desktop ? (isExporting ? "Exporting" : "Export") : undefined
+          }
+          className={
+            desktop
+              ? "mac-toolbar-button mac-toolbar-export"
+              : "bg-blue-600 hover:bg-blue-700 text-white dark:bg-blue-600 dark:hover:bg-blue-700 px-2 sm:px-3"
+          }
         >
           {isExporting ? (
             <>
@@ -68,8 +77,12 @@ export function ExportDialog({
             </>
           ) : (
             <>
-              <FileDown className="h-4 w-4 min-[420px]:mr-2" />
-              <span className="hidden min-[420px]:inline">Export</span>
+              <FileDown
+                className={desktop ? "h-4 w-4" : "h-4 w-4 min-[420px]:mr-2"}
+              />
+              <span className="hidden min-[420px]:inline">
+                {desktop ? "Export…" : "Export"}
+              </span>
             </>
           )}
         </Button>

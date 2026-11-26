@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useDebounce } from "@/hooks/use-debounce";
 import { parseMarkdown, extractMermaidFromHtml } from "@/lib/markdown/parser";
+import { isDesktop, resolveDesktopImages } from "@/lib/desktop";
+import { useEditorStore } from "@/stores/editor-store";
 import { MermaidRenderer } from "./mermaid-renderer";
 import { toast } from "sonner";
 import "katex/dist/katex.min.css";
@@ -38,6 +40,7 @@ const HTML_BLOCK_CLASSES =
 
 export function MarkdownPreviewPane({ content }: MarkdownPreviewPaneProps) {
   const debouncedContent = useDebounce(content, 300);
+  const documentId = useEditorStore((state) => state.desktopDocumentId);
   const [html, setHtml] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [mermaidDiagrams, setMermaidDiagrams] = useState<
@@ -47,14 +50,21 @@ export function MarkdownPreviewPane({ content }: MarkdownPreviewPaneProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    let canceled = false;
     const renderMarkdown = async () => {
       setIsLoading(true);
       try {
-        const parsedHtml = await parseMarkdown(debouncedContent);
+        const desktop = isDesktop();
+        let parsedHtml = await parseMarkdown(debouncedContent, desktop);
+        if (desktop) {
+          parsedHtml = await resolveDesktopImages(parsedHtml, documentId);
+          if (canceled) return;
+        }
         const diagrams = extractMermaidFromHtml(parsedHtml);
         setMermaidDiagrams(diagrams);
         setHtml(parsedHtml);
       } catch (error) {
+        if (isDesktop() && canceled) return;
         const errorMsg =
           error instanceof Error ? error.message : "Unknown error";
         toast.error("Preview render failed", {
@@ -65,12 +75,15 @@ export function MarkdownPreviewPane({ content }: MarkdownPreviewPaneProps) {
           '<p class="text-red-500">Error rendering preview. Please check your markdown syntax.</p>',
         );
       } finally {
-        setIsLoading(false);
+        if (!isDesktop() || !canceled) setIsLoading(false);
       }
     };
 
     renderMarkdown();
-  }, [debouncedContent]);
+    return () => {
+      canceled = true;
+    };
+  }, [debouncedContent, documentId]);
 
   const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
     const target = e.target as HTMLElement;
@@ -144,7 +157,7 @@ export function MarkdownPreviewPane({ content }: MarkdownPreviewPaneProps) {
   }, [html, mermaidDiagrams]);
 
   return (
-    <div className="h-full min-h-0 w-full flex flex-col overflow-hidden bg-slate-50 dark:bg-slate-900">
+    <div className="md-surface h-full min-h-0 w-full flex flex-col overflow-hidden bg-slate-50 dark:bg-slate-900">
       <div
         ref={scrollContainerRef}
         onClick={handleClick}

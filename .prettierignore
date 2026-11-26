@@ -5,3 +5,4 @@ dist
 build
 coverage
 pnpm-lock.yaml
+.impeccable/hook.cache.json
