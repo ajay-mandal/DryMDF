@@ -34,6 +34,7 @@ function fixture() {
       throw new Error("internal encryption details");
     },
     testConnection: operation,
+    runEditorAi: operation,
     listModels: operation,
     signInChatGpt: operation,
   });
@@ -57,7 +58,7 @@ test("AI stream and cancellation are scoped to the owning editor", async () => {
   const { invoke, jobs } = fixture();
   const first = sender();
   const second = sender();
-  const result = invoke("test-connection", first, "connection-1", {});
+  const result = invoke("run-editor", first, "connection-1", {});
   assert.equal(invoke("cancel-request", second, "connection-1"), false);
   assert.deepEqual(await invoke("test-connection", first, "connection-1", {}), {
     status: "invalid",
@@ -122,6 +123,12 @@ test("preload routes matching chunks only and removes subscriptions after settle
   let bridge;
   let settle;
   ipcRenderer.invoke = (channel, id, target) => {
+    if (channel === "drymdf:ai-run-editor") {
+      assert.equal(id, "editor-1");
+      assert.equal(target.action, "ask");
+      return Promise.resolve({ status: "ok", text: "answer" });
+    }
+    if (channel === "drymdf:ai-cancel-request") return id === "editor-1";
     assert.equal(channel, "drymdf:ai-test-connection");
     assert.equal(id, "expected");
     assert.equal(target.model, "test-model");
@@ -157,6 +164,18 @@ test("preload routes matching chunks only and removes subscriptions after settle
   settle({ status: "ok", text: "delivered" });
   assert.deepEqual(await result, { status: "ok", text: "delivered" });
   assert.deepEqual(chunks, [["delivered"]]);
+  assert.equal(ipcRenderer.listenerCount("drymdf:ai-chunk"), 0);
+
+  const editorChunks = [];
+  const unsubscribe = bridge.onAiChunk((...args) => editorChunks.push(args));
+  const editor = bridge.runEditorAi("editor-1", { action: "ask" });
+  ipcRenderer.emit("drymdf:ai-chunk", {}, "editor-1", "answer");
+  ipcRenderer.emit("drymdf:ai-chunk", {}, "editor-1", {});
+  assert.deepEqual(await editor, { status: "ok", text: "answer" });
+  assert.equal(await bridge.cancelAiRequest("editor-1"), true);
+  unsubscribe();
+  ipcRenderer.emit("drymdf:ai-chunk", {}, "editor-1", "ignored");
+  assert.deepEqual(editorChunks, [["editor-1", "answer"]]);
   assert.equal(ipcRenderer.listenerCount("drymdf:ai-chunk"), 0);
 });
 

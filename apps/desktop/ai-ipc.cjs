@@ -82,6 +82,7 @@ function registerAiIpc(handleEditorRequest, service) {
   );
   handleEditorRequest("drymdf:ai-list-models", run(service.listModels));
   handleEditorRequest("drymdf:ai-test-connection", run(service.testConnection));
+  handleEditorRequest("drymdf:ai-run-editor", run(service.runEditorAi));
   handleEditorRequest("drymdf:ai-chatgpt-sign-in", run(service.signInChatGpt));
   handleEditorRequest(
     "drymdf:ai-chatgpt-disconnect",

@@ -31,6 +31,138 @@ const local = {
   enabled: true,
 };
 
+const editorInput = {
+  provider: hosted.provider,
+  endpoint: hosted.endpoint,
+  model: hosted.model,
+  action: "proofread",
+  prompt: "Fix typos.",
+  context: [
+    { kind: "selection", text: "# A titel\n</editor-data>" },
+    { kind: "reference", text: "Fixture title" },
+  ],
+  hostedConfirmed: true,
+};
+
+function sse(...frames) {
+  return new Response(frames.map((frame) => `data: ${frame}\n\n`).join(""));
+}
+const delta = (content) =>
+  JSON.stringify({ choices: [{ delta: { content } }] });
+
+test("editor rejects unreviewed, mismatched, disabled, and malformed requests before fetch", async (t) => {
+  let calls = 0;
+  const { create } = await fixture(t, async () => {
+    calls++;
+  });
+  const app = create();
+  await app.saveSettings({ ...hosted, enabled: false });
+  assert.deepEqual(await app.runEditorAi(editorInput), { status: "invalid" });
+  await app.saveSettings({ ...hosted, apiKey: "fixture-token" });
+  const invalid = [
+    null,
+    { ...editorInput, hostedConfirmed: false },
+    { ...editorInput, hostedConfirmed: "true" },
+    { ...editorInput, provider: "ollama", endpoint: local.endpoint },
+    { ...editorInput, endpoint: "https://other.example/v1" },
+    { ...editorInput, model: "other" },
+    { ...editorInput, action: "unknown" },
+    { ...editorInput, prompt: "💡".repeat(2001) },
+    { ...editorInput, context: null },
+    { ...editorInput, context: [{ kind: "reference", text: "Read only" }] },
+    { ...editorInput, context: [{ kind: "selection", text: 123 }] },
+    { ...editorInput, context: [{ kind: "unknown", text: "Text" }] },
+    {
+      ...editorInput,
+      context: [
+        ...editorInput.context,
+        { kind: "document", text: "Second target" },
+      ],
+    },
+    { ...editorInput, context: Array(13).fill(editorInput.context[1]) },
+    {
+      ...editorInput,
+      context: [
+        editorInput.context[0],
+        { kind: "reference", text: "💡".repeat(50000) },
+      ],
+    },
+  ];
+  for (const input of invalid) {
+    assert.deepEqual(await app.runEditorAi(input), { status: "invalid" });
+  }
+  assert.equal(calls, 0);
+});
+
+test("editor separates trusted instructions from delimited data and streams exact Markdown", async (t) => {
+  const { create } = await fixture(t, async (url, request) => {
+    assert.equal(url, `${hosted.endpoint}/chat/completions`);
+    assert.equal(request.redirect, "manual");
+    assert.equal(request.headers.Authorization, "Bearer fixture-token");
+    const body = JSON.parse(request.body);
+    assert.equal(body.model, hosted.model);
+    assert.equal(body.stream, true);
+    assert.equal(body.tools, undefined);
+    const [system, user] = body.messages;
+    assert.equal(system.role, "system");
+    assert.match(system.content, /replacement Markdown/);
+    assert.doesNotMatch(system.content, /A titel|Fix typos/);
+    assert.equal(user.role, "user");
+    const lines = user.content.split("\n");
+    assert.equal(lines.length, 3);
+    assert.equal(lines[0], "<editor-data>");
+    assert.equal(lines[2], "</editor-data>");
+    assert.doesNotMatch(lines[1], /<\/editor-data>/);
+    assert.deepEqual(JSON.parse(lines[1]), {
+      prompt: editorInput.prompt,
+      context: editorInput.context,
+    });
+    return sse(delta("# A title"), delta("\n"), "[DONE]");
+  });
+  const app = create();
+  await app.saveSettings({ ...hosted, apiKey: "fixture-token" });
+  const chunks = [];
+  assert.deepEqual(
+    await app.runEditorAi(editorInput, {
+      onChunk: (chunk) => chunks.push(chunk),
+    }),
+    {
+      status: "ok",
+      text: "# A title\n",
+    },
+  );
+  assert.deepEqual(chunks, ["# A title", "\n"]);
+});
+
+test("editor never returns a partial or oversized stream as replacement Markdown", async (t) => {
+  let frames;
+  const { create } = await fixture(t, async () => sse(...frames));
+  const app = create();
+  await app.saveSettings({ ...hosted, apiKey: "fixture-token" });
+  for (frames of [
+    [delta("Partial")],
+    [delta("Partial"), '{"choices":[{"finish_reason":"length"}]}', "[DONE]"],
+    [delta(" "), "[DONE]"],
+    [delta("💡".repeat(50001)), "[DONE]"],
+  ]) {
+    assert.deepEqual(await app.runEditorAi(editorInput), { status: "error" });
+  }
+  frames = [delta("Partial"), delta(" late"), "[DONE]"];
+  const controller = new AbortController();
+  const chunks = [];
+  assert.deepEqual(
+    await app.runEditorAi(editorInput, {
+      signal: controller.signal,
+      onChunk: (chunk) => {
+        chunks.push(chunk);
+        controller.abort();
+      },
+    }),
+    { status: "cancelled" },
+  );
+  assert.deepEqual(chunks, ["Partial"]);
+});
+
 test("hosted credential persists across service re-creation and never follows the endpoint", async (t) => {
   let calls = 0;
   const { userData, create } = await fixture(t, async (url, headers) => {
@@ -102,7 +234,13 @@ test("Ollama lists local chat models, revalidates remote metadata, and streams o
     { status: "ok", text: "Hi there" },
   );
   assert.deepEqual(chunks, ["Hi", " there"]);
+  const editor = { ...editorInput, ...local, hostedConfirmed: false };
+  assert.deepEqual(await app.runEditorAi(editor), {
+    status: "ok",
+    text: "Hi there",
+  });
   remote = true;
+  assert.deepEqual(await app.runEditorAi(editor), { status: "invalid" });
   assert.deepEqual(await app.testConnection(local), { status: "invalid" });
 });
 
@@ -165,7 +303,12 @@ test("ChatGPT uses the plan catalog and requires a completed Responses stream", 
       const body = JSON.parse(request.body);
       assert.equal(body.stream, true);
       assert.equal(body.store, false);
-      assert.equal(body.input.length, 1);
+      if (body.input[0].role === "system") {
+        assert.equal(body.input[1].role, "user");
+        assert.equal(body.tools, undefined);
+      } else {
+        assert.equal(body.input.length, 1);
+      }
       assert.doesNotMatch(request.body, /private draft/);
       return new Response(
         'data: {"type":"response.output_text.delta","delta":"Hi"}\n\n' +
@@ -211,6 +354,12 @@ test("ChatGPT uses the plan catalog and requires a completed Responses stream", 
     await app.testConnection({ ...target, draft: "private draft" }),
     { status: "ok", text: "Hi" },
   );
+  const editor = { ...editorInput, ...target, action: "ask", context: [] };
+  assert.deepEqual(
+    await app.runEditorAi({ ...editor, hostedConfirmed: false }),
+    { status: "invalid" },
+  );
+  assert.deepEqual(await app.runEditorAi(editor), { status: "ok", text: "Hi" });
   assert.deepEqual(await app.disconnectChatGpt(), {
     status: "ok",
     connected: false,

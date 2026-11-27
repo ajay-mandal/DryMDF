@@ -12,7 +12,9 @@ import {
   Settings,
   PanelLeft,
   PanelRight,
+  Sparkles,
 } from "lucide-react";
+import type { ReactCodeMirrorRef } from "@uiw/react-codemirror";
 import { toast } from "sonner";
 import { MarkdownEditor } from "@/components/editor/markdown-editor";
 import { DesktopExportSheet } from "@/components/export/desktop-export-sheet";
@@ -37,6 +39,7 @@ import {
 } from "@/lib/desktop";
 import { useEditorStore } from "@/stores/editor-store";
 import { DesktopSetup, type DesktopSheet } from "./desktop-setup";
+import { DesktopEditorAi } from "./desktop-editor-ai";
 import { DesktopSettings } from "./desktop-settings";
 import {
   CreateWorkspaceDialog,
@@ -108,6 +111,11 @@ export default function DesktopEditor({ onPreviewModeChange, pdfMode }: Props) {
       : null,
   );
   const [pane, setPane] = useState<"editor" | "preview">("editor");
+  const editorRef = useRef<ReactCodeMirrorRef>(null);
+  const [assistant, setAssistant] = useState<{
+    key: string;
+    selection: boolean;
+  } | null>(null);
   const [recent, setRecent] = useState<RecentDocument[]>([]);
   const [offerNotifications, setOfferNotifications] = useState(false);
   const [exportFolder, setExportFolder] = useState("Downloads");
@@ -336,7 +344,24 @@ export default function DesktopEditor({ onPreviewModeChange, pdfMode }: Props) {
   }
 
   const chooseFile = () => void openFile();
+  const editorKey = workspaceFile
+    ? `${workspaceId}:${workspaceFile.id}:${workspaceFile.locationVersion ?? 0}`
+    : `draft:${draftVersion}:${desktopDocumentId ?? "untitled"}`;
+  const showAssistant =
+    !sampleReady && !settings && !sheet && assistant?.key === editorKey;
   const switchPane = () => setPane(pane === "editor" ? "preview" : "editor");
+  function openAssistant() {
+    if (showAssistant) {
+      setAssistant(null);
+      return;
+    }
+    const selection = editorRef.current?.view?.state.selection.main;
+    setAssistant({
+      key: editorKey,
+      selection: !!selection && !selection.empty,
+    });
+    setPane("preview");
+  }
   const newDocument = () => {
     if (mayReplace()) {
       useEditorStore.getState().leaveWorkspace();
@@ -530,7 +555,11 @@ export default function DesktopEditor({ onPreviewModeChange, pdfMode }: Props) {
               )}
               <button className="mac-pane-toggle" onClick={switchPane}>
                 <PanelRight />
-                {sampleReady || pane === "editor" ? "Preview" : "Editor"}
+                {sampleReady || pane === "editor"
+                  ? showAssistant
+                    ? "Writing assistant"
+                    : "Preview"
+                  : "Editor"}
               </button>
             </div>
             <SplitPane
@@ -541,31 +570,68 @@ export default function DesktopEditor({ onPreviewModeChange, pdfMode }: Props) {
                     <h1 tabIndex={-1} ref={heading}>
                       {activeName}
                     </h1>
-                    <span>Markdown</span>
+                    {!sampleReady && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={openAssistant}
+                        aria-pressed={showAssistant}
+                        disabled={unavailable}
+                      >
+                        <Sparkles /> AI assist
+                      </Button>
+                    )}
                   </div>
                   <div className="mac-code">
                     <MarkdownEditor
-                      key={workspaceFile?.id}
+                      key={editorKey}
+                      editorRef={editorRef}
                       sampleContent={sampleReady ? sample : undefined}
                     />
                   </div>
                 </section>
               }
               right={
-                <section className="mac-preview" aria-label="Document preview">
-                  <DesktopPreview
-                    markdown={sampleReady ? sample : content}
-                    documentId={desktopDocumentId}
-                    sourceKey={
-                      workspaceFile
-                        ? `${workspaceId}:${workspaceFile.id}:${workspaceFile.locationVersion ?? 0}`
-                        : `draft:${draftVersion}:${desktopDocumentId ?? "untitled"}`
-                    }
-                    sample={sampleReady}
-                    mode={pdfMode ? "pdf" : "markdown"}
-                    onModeChange={onPreviewModeChange}
-                  />
-                </section>
+                <>
+                  {showAssistant && (
+                    <DesktopEditorAi
+                      key={editorKey}
+                      editor={editorRef}
+                      name={activeName}
+                      content={content}
+                      selectionDefault={assistant.selection}
+                      references={(workspace?.fileIds ?? [])
+                        .filter((id) => id !== desktopDocumentId)
+                        .map((id) => workspaceFiles[id])
+                        .filter(Boolean)}
+                      onClose={() => setAssistant(null)}
+                      onApply={() => {
+                        setAssistant(null);
+                        setPane("editor");
+                        focusDocument();
+                      }}
+                      onSettings={() => {
+                        setAssistant(null);
+                        setSettings(true);
+                      }}
+                    />
+                  )}
+                  <div hidden={showAssistant} className="h-full">
+                    <section
+                      className="mac-preview"
+                      aria-label="Document preview"
+                    >
+                      <DesktopPreview
+                        markdown={sampleReady ? sample : content}
+                        documentId={desktopDocumentId}
+                        sourceKey={editorKey}
+                        sample={sampleReady}
+                        mode={pdfMode ? "pdf" : "markdown"}
+                        onModeChange={onPreviewModeChange}
+                      />
+                    </section>
+                  </div>
+                </>
               }
             />
           </div>

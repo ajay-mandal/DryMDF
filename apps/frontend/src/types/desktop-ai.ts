@@ -17,6 +17,17 @@ export interface AiSaveSettings extends AiTarget {
 export interface AiTestRequest extends AiTarget {
   model: string;
 }
+export type EditorAiAction = "ask" | "proofread" | "style" | "rewrite";
+export interface EditorAiContext {
+  kind: "selection" | "document" | "reference";
+  text: string;
+}
+export interface EditorAiRequest extends AiTestRequest {
+  action: EditorAiAction;
+  prompt: string;
+  context: EditorAiContext[];
+  hostedConfirmed: boolean;
+}
 export type AiFailure = {
   status:
     | "invalid"
@@ -45,6 +56,11 @@ export interface DesktopAiBridge {
     target: AiTestRequest,
     onChunk?: (chunk: string) => void,
   ): Promise<AiResult<{ text: string }>>;
+  runEditorAi(
+    requestId: string,
+    input: EditorAiRequest,
+  ): Promise<AiResult<{ text: string }>>;
+  onAiChunk(onChunk: (requestId: string, chunk: string) => void): () => void;
   cancelAiRequest(requestId: string): Promise<boolean>;
 }
 // apiKey omitted retains that endpoint's existing key; null removes it. No key-read API.

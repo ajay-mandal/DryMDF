@@ -13,7 +13,13 @@ const desktopLineNumbers = lineNumbers({
   formatNumber: (number) => String(number).padStart(2, "0"),
 });
 
-export function MarkdownEditor({ sampleContent }: { sampleContent?: string }) {
+export function MarkdownEditor({
+  sampleContent,
+  editorRef,
+}: {
+  sampleContent?: string;
+  editorRef?: React.Ref<import("@uiw/react-codemirror").ReactCodeMirrorRef>;
+}) {
   const { content, setContent, settings } = useEditorStore();
   const { theme, resolvedTheme } = useTheme();
   const appearance = desktopBuild ? resolvedTheme : theme;
@@ -44,6 +50,7 @@ export function MarkdownEditor({ sampleContent }: { sampleContent?: string }) {
     <div className="h-full w-full overflow-hidden border-r border-slate-200 dark:border-slate-700">
       <div className="h-full">
         <CodeMirror
+          ref={editorRef}
           value={sampleContent ?? content}
           readOnly={sampleContent !== undefined}
           height="100%"

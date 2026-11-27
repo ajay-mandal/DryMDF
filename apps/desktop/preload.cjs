@@ -85,6 +85,24 @@ contextBridge.exposeInMainWorld("drymdfDesktop", {
   listAiModels: (requestId, target) =>
     ipcRenderer.invoke("drymdf:ai-list-models", requestId, target),
   testAiConnection,
+  runEditorAi: (requestId, input) =>
+    ipcRenderer.invoke("drymdf:ai-run-editor", requestId, input),
+  onAiChunk: (onChunk) => {
+    if (typeof onChunk !== "function")
+      throw new TypeError("Expected a callback");
+    const listener = (_event, id, chunk) => {
+      if (typeof id !== "string" || typeof chunk !== "string") return;
+      try {
+        onChunk(id, chunk);
+      } catch {
+        // Do not surface provider output in preload errors.
+      }
+    };
+    ipcRenderer.on("drymdf:ai-chunk", listener);
+    return () => {
+      ipcRenderer.removeListener("drymdf:ai-chunk", listener);
+    };
+  },
   cancelAiRequest: (requestId) =>
     ipcRenderer.invoke("drymdf:ai-cancel-request", requestId),
 });

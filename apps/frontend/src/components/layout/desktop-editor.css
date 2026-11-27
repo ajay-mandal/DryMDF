@@ -937,3 +937,86 @@ body:has(.mac-shell) [data-slot="dialog-overlay"] {
 .mac-export-sheet footer {
   flex-wrap: wrap;
 }
+
+.mac-ai-pane {
+  height: 100%;
+  min-height: 0;
+  overflow: auto;
+  padding: 18px clamp(12px, 2vw, 24px);
+  color: var(--ink);
+  font-size: 13px;
+}
+.mac-ai-pane > * + * {
+  margin-top: 16px;
+}
+.mac-ai-pane header {
+  border-bottom: 1px solid var(--rule);
+  padding-bottom: 12px;
+}
+.mac-ai-pane h2 {
+  font-size: 16px;
+  font-weight: 650;
+}
+.mac-ai-pane h3,
+.mac-ai-review h3 {
+  font-weight: 600;
+}
+.mac-ai-pane p {
+  color: var(--secondary-ink);
+  overflow-wrap: anywhere;
+}
+.mac-ai-form > * + * {
+  margin-top: 12px;
+}
+.mac-ai-form label {
+  font-weight: 550;
+}
+.mac-ai-form :is(select, textarea) {
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+  padding: 7px 9px;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  background: var(--background);
+  font: inherit;
+  font-weight: 400;
+}
+.mac-ai-pane summary,
+.mac-ai-review summary {
+  cursor: pointer;
+}
+.mac-ai-references {
+  max-height: 128px;
+  overflow: auto;
+  padding: 6px;
+}
+.mac-ai-comparison {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr));
+  gap: 8px;
+}
+.mac-ai-comparison > div {
+  min-width: 0;
+}
+.mac-ai-pane pre,
+.mac-ai-review pre {
+  max-height: 300px;
+  overflow: auto;
+  margin-top: 4px;
+  padding: 8px;
+  border: 1px solid var(--rule, var(--border));
+  border-radius: 6px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.mac-ai-review-body {
+  max-height: 50vh;
+  overflow: auto;
+}
+.mac-ai-review-body details {
+  margin-top: 6px;
+}
+.mac-ai-review [data-slot="dialog-description"] {
+  overflow-wrap: anywhere;
+}
