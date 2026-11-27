@@ -7,6 +7,7 @@ export interface AiSettings extends AiTarget {
   enabled: boolean;
   model: string;
   hasApiKey: boolean;
+  apiKeyPreview: string | null;
   chatGptConnected: boolean;
 }
 export interface AiSaveSettings extends AiTarget {
@@ -26,6 +27,7 @@ export interface EditorAiRequest extends AiTestRequest {
   action: EditorAiAction;
   prompt: string;
   context: EditorAiContext[];
+  history?: { question: string; answer: string }[];
   hostedConfirmed: boolean;
 }
 export type AiFailure = {
@@ -41,7 +43,9 @@ export type AiFailure = {
 export type AiResult<T> = ({ status: "ok" } & T) | AiFailure;
 // Methods on window.drymdfDesktop. Use a unique requestId (e.g. crypto.randomUUID()) per request.
 export interface DesktopAiBridge {
-  getAiSettings(): Promise<AiResult<{ settings: AiSettings }>>;
+  getAiSettings(
+    includeKeyPreview?: boolean,
+  ): Promise<AiResult<{ settings: AiSettings }>>;
   signInChatGpt(requestId: string): Promise<AiResult<{ connected: boolean }>>;
   disconnectChatGpt(): Promise<AiResult<{ connected: boolean }>>;
   saveAiSettings(

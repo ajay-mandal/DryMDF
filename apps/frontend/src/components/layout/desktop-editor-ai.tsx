@@ -16,6 +16,30 @@ import type {
   EditorAiRequest,
 } from "@/types/desktop-ai";
 
+type Scope = "none" | "selection" | "document";
+type ChatHistory = NonNullable<EditorAiRequest["history"]>;
+type ChatMessagePair = ChatHistory[number];
+interface ChatTurn extends ChatMessagePair {
+  id: string;
+  sources: string[];
+  model: string;
+}
+// Keep these request limits in sync with editorMessages in the desktop process.
+const maxTurns = 8;
+const maxHistoryChars = 24000;
+const maxRequestChars = 100000;
+
+function recentHistory(turns: ChatTurn[], requestSize: number): ChatHistory {
+  let remaining = Math.min(maxHistoryChars, maxRequestChars - requestSize);
+  const history: ChatHistory = [];
+  for (const { question, answer } of [...turns].reverse()) {
+    remaining -= question.length + answer.length;
+    if (remaining < 0) break;
+    history.unshift({ question, answer });
+  }
+  return history;
+}
+
 type View = NonNullable<ReactCodeMirrorRef["view"]>;
 interface Capture {
   view: View;
@@ -31,6 +55,7 @@ interface Props {
   content: string;
   name: string;
   selectionDefault: boolean;
+  selectionRequest?: number;
   references: { id: string; name: string; content: string }[];
   onClose: () => void;
   onApply: () => void;
@@ -66,6 +91,7 @@ export function DesktopEditorAi({
   content,
   name,
   selectionDefault,
+  selectionRequest,
   references,
   onClose,
   onApply,
@@ -74,10 +100,19 @@ export function DesktopEditorAi({
   const [config, setConfig] = useState<AiSettings | null | undefined>(
     undefined,
   );
-  const [scope, setScope] = useState(
+  const [askScope, setAskScope] = useState<Scope>(
+    selectionDefault ? "selection" : "none",
+  );
+  const [editScope, setEditScope] = useState<Scope>(
     selectionDefault ? "selection" : "document",
   );
   const [action, setAction] = useState<EditorAiAction>("ask");
+  const [lastSelectionRequest, setLastSelectionRequest] =
+    useState(selectionRequest);
+  const [turns, setTurns] = useState<ChatTurn[]>([]);
+  const [includeHistory, setIncludeHistory] = useState(true);
+  const asking = action === "ask";
+  const scope = asking ? askScope : editScope;
   const [prompt, setPrompt] = useState("");
   const [included, setIncluded] = useState<string[]>([]);
   const [review, setReview] = useState<Capture | null>(null);
@@ -88,13 +123,28 @@ export function DesktopEditorAi({
   const [retry, setRetry] = useState(false);
   const active = useRef<string | null>(null);
   const bridge = window.drymdfDesktop;
+  // Defer a selection launch during streaming so completion cannot reset its scope.
+  if (!busy && selectionRequest !== lastSelectionRequest) {
+    setLastSelectionRequest(selectionRequest);
+    if (selectionRequest !== undefined) {
+      setAction("ask");
+      setAskScope("selection");
+      if (!asking) setPrompt("");
+      setIncluded([]);
+      setSuggestion(null);
+      setReply("");
+      setReview(null);
+      setMessage("");
+      setRetry(false);
+    }
+  }
   useEffect(() => {
     let live = true;
     const unsubscribe = bridge?.onAiChunk?.((id, chunk) => {
       if (active.current === id) setReply((previous) => previous + chunk);
     });
     void bridge
-      ?.getAiSettings()
+      ?.getAiSettings(false)
       .then((result) => {
         if (live) setConfig(result.status === "ok" ? result.settings : null);
       })
@@ -121,7 +171,10 @@ export function DesktopEditorAi({
   async function send(capture: Capture, confirmed: boolean) {
     setReview(null);
     if (!bridge || active.current) return;
-    if (!isCurrent(capture)) {
+    if (
+      capture.input.context.some((part) => part.kind !== "reference") &&
+      !isCurrent(capture)
+    ) {
       setMessage(
         "The draft changed. Review a new request with the current text.",
       );
@@ -145,8 +198,28 @@ export function DesktopEditorAi({
         setMessage(failures[result.status]);
         setRetry(true);
       } else {
-        setReply(result.text);
-        if (capture.input.action !== "ask") setSuggestion(capture);
+        if (capture.input.action === "ask") {
+          const { prompt: question, provider, model } = capture.input;
+          setTurns((previous) =>
+            [
+              ...previous,
+              {
+                id,
+                question,
+                answer: result.text,
+                sources: capture.labels,
+                model: `${providers[provider]} · ${model}`,
+              },
+            ].slice(-maxTurns),
+          );
+          setReply("");
+          setPrompt("");
+          setAskScope("none");
+          setIncluded([]);
+        } else {
+          setReply(result.text);
+          setSuggestion(capture);
+        }
       }
     } catch {
       if (active.current === id) {
@@ -168,9 +241,10 @@ export function DesktopEditorAi({
     const doc = view.state.doc;
     const range = view.state.selection.main;
     const from = scope === "selection" ? range.from : 0;
-    const to = scope === "selection" ? range.to : doc.length;
+    const to =
+      scope === "selection" ? range.to : scope === "document" ? doc.length : 0;
     const original = doc.sliceString(from, to);
-    if (!original.trim()) {
+    if (scope !== "none" && !original.trim()) {
       setMessage(
         scope === "selection"
           ? "Select some text in the editor first."
@@ -180,27 +254,25 @@ export function DesktopEditorAi({
     }
     const extra = references.filter((file) => included.includes(file.id));
     const context: EditorAiRequest["context"] = [
-      {
-        kind: scope === "selection" ? "selection" : "document",
-        text: original,
-      },
+      ...(scope === "none" ? [] : [{ kind: scope, text: original }]),
       ...extra.map((file) => ({
         kind: "reference" as const,
         text: file.content,
       })),
     ];
-    if (
-      context.length > 12 ||
-      context.reduce(
-        (size, part) => size + part.text.length,
-        prompt.trim().length,
-      ) > 100000
-    ) {
+    const question = prompt.trim();
+    const requestSize = context.reduce(
+      (size, part) => size + part.text.length,
+      question.length,
+    );
+    if (context.length > 12 || requestSize > maxRequestChars) {
       setMessage(
         "Select a smaller section or remove reference files. Each request allows 100,000 characters across up to 12 items.",
       );
       return;
     }
+    const history =
+      asking && includeHistory ? recentHistory(turns, requestSize) : [];
     const capture: Capture = {
       view,
       doc,
@@ -212,12 +284,15 @@ export function DesktopEditorAi({
         endpoint: config.endpoint,
         model: config.model,
         action,
-        prompt: prompt.trim(),
+        prompt: question,
         context,
+        ...(history.length ? { history } : {}),
         hostedConfirmed: false,
       },
       labels: [
-        scope === "selection" ? `Selection from ${name}` : name,
+        ...(scope === "none"
+          ? []
+          : [scope === "selection" ? `Selection from ${name}` : name]),
         ...extra.map((file) => file.name),
       ],
     };
@@ -249,6 +324,9 @@ export function DesktopEditorAi({
       userEvent: "input.complete",
       annotations: isolateHistory.of("full"),
     });
+    setSuggestion(null);
+    setReply("");
+    setMessage("");
     onApply();
   }
 
@@ -267,6 +345,47 @@ export function DesktopEditorAi({
           Back to Preview
         </Button>
       </header>
+      {asking && turns.length > 0 && (
+        <section aria-label="Chat history" className="space-y-3">
+          <div className="flex items-center justify-between gap-2">
+            <h3>Chat history</h3>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={busy}
+              onClick={() => {
+                setTurns([]);
+                setPrompt("");
+                setAskScope("none");
+                setIncluded([]);
+                setIncludeHistory(true);
+                setReview(null);
+                setRetry(false);
+                setMessage("");
+              }}
+            >
+              Clear chat
+            </Button>
+          </div>
+          <ol className="space-y-3">
+            {turns.map((turn) => (
+              <li key={turn.id} className="space-y-1">
+                <p>
+                  {turn.model} ·{" "}
+                  {turn.sources.length
+                    ? turn.sources.join(", ")
+                    : "No document context"}
+                </p>
+                <h4>Question</h4>
+                <pre>{turn.question}</pre>
+                <h4>Answer</h4>
+                <pre>{turn.answer}</pre>
+              </li>
+            ))}
+          </ol>
+        </section>
+      )}
       {config === undefined ? (
         <p role="status">Loading AI settings…</p>
       ) : !ready ? (
@@ -289,9 +408,14 @@ export function DesktopEditorAi({
               Action
               <select
                 value={action}
-                onChange={(event) =>
-                  setAction(event.target.value as EditorAiAction)
-                }
+                disabled={!!suggestion}
+                onChange={(event) => {
+                  setAction(event.target.value as EditorAiAction);
+                  setPrompt("");
+                  setIncluded([]);
+                  setMessage("");
+                  setRetry(false);
+                }}
               >
                 {Object.entries(actions).map(([value, label]) => (
                   <option key={value} value={value}>
@@ -304,8 +428,13 @@ export function DesktopEditorAi({
               Use text from
               <select
                 value={scope}
-                onChange={(event) => setScope(event.target.value)}
+                onChange={(event) =>
+                  (asking ? setAskScope : setEditScope)(
+                    event.target.value as Scope,
+                  )
+                }
               >
+                {asking && <option value="none">No document context</option>}
                 <option value="selection">Current selection</option>
                 <option value="document">Entire document</option>
               </select>
@@ -333,8 +462,31 @@ export function DesktopEditorAi({
                 </div>
               </details>
             )}
+            {asking && turns.length > 0 && (
+              <div className="space-y-1">
+                <label className="flex items-start gap-2">
+                  <input
+                    type="checkbox"
+                    checked={includeHistory}
+                    onChange={(event) =>
+                      setIncludeHistory(event.target.checked)
+                    }
+                  />
+                  Include recent chat history
+                </label>
+                <p>
+                  Up to {maxTurns} turns are kept for this editor session. Only
+                  recent turns that fit are sent. Answers may quote previously
+                  shared text.
+                </p>
+              </div>
+            )}
             <label>
-              {action === "ask" ? "Question" : "Editing instructions"}
+              {asking
+                ? turns.length
+                  ? "Follow-up question"
+                  : "Question"
+                : "Editing instructions"}
               <textarea
                 rows={3}
                 value={prompt}
@@ -370,7 +522,9 @@ export function DesktopEditorAi({
               {retry
                 ? "Retry request"
                 : action === "ask"
-                  ? "Send question"
+                  ? turns.length
+                    ? "Send follow-up"
+                    : "Send question"
                   : "Suggest edit"}
             </Button>
           )}
@@ -419,7 +573,9 @@ export function DesktopEditorAi({
       ) : (
         reply && (
           <section aria-label="AI response">
-            <h3>{busy ? "Response in progress" : "Response"}</h3>
+            <h3>
+              {asking ? "Answer in progress" : "Generating suggested edit"}
+            </h3>
             <pre>{reply}</pre>
           </section>
         )
@@ -440,6 +596,7 @@ export function DesktopEditorAi({
             <div className="mac-ai-review-body">
               <h3>{actions[review.input.action]}</h3>
               {review.input.prompt && <pre>{review.input.prompt}</pre>}
+              {!review.input.context.length && <p>No document context</p>}
               {review.input.context.map((part, index) => (
                 <details key={index}>
                   <summary>
@@ -449,6 +606,25 @@ export function DesktopEditorAi({
                   <pre>{part.text}</pre>
                 </details>
               ))}
+              {review.input.action === "ask" && (
+                <section
+                  aria-label="Prior turns being sent"
+                  className="space-y-2"
+                >
+                  <h4>
+                    Prior turns being sent ({review.input.history?.length ?? 0})
+                  </h4>
+                  {review.input.history?.map((turn, index) => (
+                    <details key={index} open>
+                      <summary>Prior turn {index + 1}</summary>
+                      <h5>Question</h5>
+                      <pre>{turn.question}</pre>
+                      <h5>Answer</h5>
+                      <pre>{turn.answer}</pre>
+                    </details>
+                  ))}
+                </section>
+              )}
             </div>
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setReview(null)}>
@@ -458,7 +634,7 @@ export function DesktopEditorAi({
                 className="mac-primary"
                 onClick={() => void send(review, true)}
               >
-                Send Context
+                Send Request
               </Button>
             </div>
           </DialogContent>

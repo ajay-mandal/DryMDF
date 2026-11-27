@@ -112,9 +112,13 @@ export default function DesktopEditor({ onPreviewModeChange, pdfMode }: Props) {
   );
   const [pane, setPane] = useState<"editor" | "preview">("editor");
   const editorRef = useRef<ReactCodeMirrorRef>(null);
+  const [aiEnabled, setAiEnabled] = useState(false);
+  const [selectedDocument, setSelectedDocument] = useState<string>();
+  const [rightTab, setRightTab] = useState<"preview" | "chat">("preview");
   const [assistant, setAssistant] = useState<{
     key: string;
     selection: boolean;
+    launch: number;
   } | null>(null);
   const [recent, setRecent] = useState<RecentDocument[]>([]);
   const [offerNotifications, setOfferNotifications] = useState(false);
@@ -152,6 +156,23 @@ export default function DesktopEditor({ onPreviewModeChange, pdfMode }: Props) {
       active = false;
     };
   }, [editing, desktopDocumentId]);
+
+  useEffect(() => {
+    if (settings) return;
+    let live = true;
+    void window.drymdfDesktop
+      ?.getAiSettings(false)
+      .then((result) => {
+        if (live)
+          setAiEnabled(result.status === "ok" && result.settings.enabled);
+      })
+      .catch(() => {
+        if (live) setAiEnabled(false);
+      });
+    return () => {
+      live = false;
+    };
+  }, [settings]);
 
   function focusDocument() {
     requestAnimationFrame(() => {
@@ -347,19 +368,21 @@ export default function DesktopEditor({ onPreviewModeChange, pdfMode }: Props) {
   const editorKey = workspaceFile
     ? `${workspaceId}:${workspaceFile.id}:${workspaceFile.locationVersion ?? 0}`
     : `draft:${draftVersion}:${desktopDocumentId ?? "untitled"}`;
-  const showAssistant =
-    !sampleReady && !settings && !sheet && assistant?.key === editorKey;
+  const canOpenChat = !sampleReady && !settings && !sheet;
+  const hasAssistant = canOpenChat && assistant?.key === editorKey;
+  const showAssistant = hasAssistant && rightTab === "chat";
+  const hasSelection = selectedDocument === editorKey;
   const switchPane = () => setPane(pane === "editor" ? "preview" : "editor");
-  function openAssistant() {
-    if (showAssistant) {
-      setAssistant(null);
-      return;
-    }
-    const selection = editorRef.current?.view?.state.selection.main;
-    setAssistant({
-      key: editorKey,
-      selection: !!selection && !selection.empty,
+  function openAssistant(useSelection = false) {
+    setAssistant((current) => {
+      if (current?.key === editorKey && !useSelection) return current;
+      return {
+        key: editorKey,
+        selection: useSelection || hasSelection,
+        launch: (current?.launch ?? 0) + 1,
+      };
     });
+    setRightTab("chat");
     setPane("preview");
   }
   const newDocument = () => {
@@ -553,13 +576,23 @@ export default function DesktopEditor({ onPreviewModeChange, pdfMode }: Props) {
                   ))}
                 </select>
               )}
-              <button className="mac-pane-toggle" onClick={switchPane}>
+              {canOpenChat && pane === "editor" && (
+                <button
+                  className="mac-pane-toggle"
+                  onClick={() => openAssistant()}
+                >
+                  <Sparkles /> AI Chat
+                </button>
+              )}
+              <button
+                className="mac-pane-toggle"
+                onClick={() => {
+                  if (pane === "editor") setRightTab("preview");
+                  switchPane();
+                }}
+              >
                 <PanelRight />
-                {sampleReady || pane === "editor"
-                  ? showAssistant
-                    ? "Writing assistant"
-                    : "Preview"
-                  : "Editor"}
+                {sampleReady || pane === "editor" ? "Preview" : "Editor"}
               </button>
             </div>
             <SplitPane
@@ -570,15 +603,16 @@ export default function DesktopEditor({ onPreviewModeChange, pdfMode }: Props) {
                     <h1 tabIndex={-1} ref={heading}>
                       {activeName}
                     </h1>
-                    {!sampleReady && (
+                    {canOpenChat && aiEnabled && hasSelection && (
                       <Button
-                        variant="ghost"
+                        className="mac-ai-selection"
+                        variant="outline"
                         size="sm"
-                        onClick={openAssistant}
-                        aria-pressed={showAssistant}
+                        onMouseDown={(event) => event.preventDefault()}
+                        onClick={() => openAssistant(true)}
                         disabled={unavailable}
                       >
-                        <Sparkles /> AI assist
+                        <Sparkles /> Ask AI
                       </Button>
                     )}
                   </div>
@@ -586,37 +620,68 @@ export default function DesktopEditor({ onPreviewModeChange, pdfMode }: Props) {
                     <MarkdownEditor
                       key={editorKey}
                       editorRef={editorRef}
+                      onSelectionChange={(selected) =>
+                        setSelectedDocument(selected ? editorKey : undefined)
+                      }
                       sampleContent={sampleReady ? sample : undefined}
                     />
                   </div>
                 </section>
               }
               right={
-                <>
-                  {showAssistant && (
-                    <DesktopEditorAi
-                      key={editorKey}
-                      editor={editorRef}
-                      name={activeName}
-                      content={content}
-                      selectionDefault={assistant.selection}
-                      references={(workspace?.fileIds ?? [])
-                        .filter((id) => id !== desktopDocumentId)
-                        .map((id) => workspaceFiles[id])
-                        .filter(Boolean)}
-                      onClose={() => setAssistant(null)}
-                      onApply={() => {
-                        setAssistant(null);
-                        setPane("editor");
-                        focusDocument();
-                      }}
-                      onSettings={() => {
-                        setAssistant(null);
-                        setSettings(true);
-                      }}
-                    />
+                <div className="mac-right-pane">
+                  {canOpenChat && (
+                    <div
+                      className="mac-right-modes"
+                      role="group"
+                      aria-label="Right pane"
+                    >
+                      <button
+                        type="button"
+                        aria-pressed={!showAssistant}
+                        onClick={() => setRightTab("preview")}
+                      >
+                        Preview
+                      </button>
+                      <button
+                        type="button"
+                        aria-pressed={showAssistant}
+                        onClick={() => openAssistant()}
+                      >
+                        <Sparkles size={14} /> AI Chat
+                        {aiEnabled ? "" : " · Off"}
+                      </button>
+                    </div>
                   )}
-                  <div hidden={showAssistant} className="h-full">
+                  {hasAssistant && (
+                    <div className="mac-right-body" hidden={!showAssistant}>
+                      <DesktopEditorAi
+                        key={editorKey}
+                        selectionRequest={
+                          assistant.selection ? assistant.launch : undefined
+                        }
+                        editor={editorRef}
+                        name={activeName}
+                        content={content}
+                        selectionDefault={assistant.selection}
+                        references={(workspace?.fileIds ?? [])
+                          .filter((id) => id !== desktopDocumentId)
+                          .map((id) => workspaceFiles[id])
+                          .filter(Boolean)}
+                        onClose={() => setRightTab("preview")}
+                        onApply={() => {
+                          setRightTab("preview");
+                          setPane("editor");
+                          focusDocument();
+                        }}
+                        onSettings={() => {
+                          setAssistant(null);
+                          setSettings(true);
+                        }}
+                      />
+                    </div>
+                  )}
+                  <div hidden={showAssistant} className="mac-right-body">
                     <section
                       className="mac-preview"
                       aria-label="Document preview"
@@ -631,7 +696,7 @@ export default function DesktopEditor({ onPreviewModeChange, pdfMode }: Props) {
                       />
                     </section>
                   </div>
-                </>
+                </div>
               }
             />
           </div>

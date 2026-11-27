@@ -16,9 +16,11 @@ const desktopLineNumbers = lineNumbers({
 export function MarkdownEditor({
   sampleContent,
   editorRef,
+  onSelectionChange,
 }: {
   sampleContent?: string;
   editorRef?: React.Ref<import("@uiw/react-codemirror").ReactCodeMirrorRef>;
+  onSelectionChange?: (hasSelection: boolean) => void;
 }) {
   const { content, setContent, settings } = useEditorStore();
   const { theme, resolvedTheme } = useTheme();
@@ -60,6 +62,13 @@ export function MarkdownEditor({
               ? [markdownExtension, desktopLineNumbers]
               : [markdownExtension]
           }
+          onCreateEditor={(view) =>
+            onSelectionChange?.(!view.state.selection.main.empty)
+          }
+          onUpdate={(update) => {
+            if (update.selectionSet || update.docChanged)
+              onSelectionChange?.(!update.state.selection.main.empty);
+          }}
           onChange={sampleContent === undefined ? handleChange : undefined}
           className="h-full text-sm"
           basicSetup={{

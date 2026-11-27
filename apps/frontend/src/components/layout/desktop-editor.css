@@ -1020,3 +1020,82 @@ body:has(.mac-shell) [data-slot="dialog-overlay"] {
 .mac-ai-review [data-slot="dialog-description"] {
   overflow-wrap: anywhere;
 }
+
+.mac-ai-step {
+  margin: 18px 0 8px;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 650;
+}
+.mac-ai-provider-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 235px), 1fr));
+  gap: 8px;
+}
+.mac-ai-provider-grid button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  text-align: left;
+  transition: background-color 120ms ease;
+}
+.mac-ai-provider-grid button svg {
+  flex: none;
+}
+.mac-ai-provider-grid button small {
+  display: block;
+  color: var(--secondary-ink);
+}
+.mac-ai-provider-grid button:enabled:hover {
+  background: var(--chrome);
+}
+.mac-ai-provider-grid button[aria-pressed="true"] {
+  background: var(--selection);
+  border-color: var(--action);
+}
+.mac-ai-key-preview {
+  width: fit-content;
+  padding: 3px 7px;
+  border-radius: 4px;
+  background: var(--chrome);
+}
+.mac-right-pane {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.mac-right-body {
+  flex: 1;
+  min-height: 0;
+}
+.mac-right-modes {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--rule);
+}
+.mac-right-modes button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border-radius: 6px;
+  padding: 5px 10px;
+  color: var(--secondary-ink);
+}
+.mac-right-modes button:hover {
+  background: var(--chrome);
+}
+.mac-right-modes button[aria-pressed="true"] {
+  background: var(--selection);
+  color: var(--ink);
+  font-weight: 600;
+}
+.mac-ai-selection {
+  flex: none;
+  margin-inline-start: auto;
+}

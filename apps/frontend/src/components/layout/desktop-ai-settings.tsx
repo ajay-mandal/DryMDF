@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
-import { Cpu } from "lucide-react";
+import { Cpu, KeyRound, Laptop, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type {
   AiFailure,
@@ -157,11 +157,16 @@ function ProviderForm({
     setStatus("");
   }
 
-  async function save(removeKey = false) {
+  async function save(removeKey = false, enabledOverride?: boolean) {
     setBusy("save");
     setStatus("Saving settings…");
-    const { enabled, provider, endpoint, model } = draft;
-    const apiKey = hosted ? keyInput.current?.value.trim() : undefined;
+    const { provider, endpoint, model } =
+      enabledOverride === undefined ? draft : saved;
+    const enabled = enabledOverride ?? draft.enabled;
+    const apiKey =
+      enabledOverride === undefined && hosted
+        ? keyInput.current?.value.trim()
+        : undefined;
     try {
       const result = await bridge.saveAiSettings({
         enabled,
@@ -190,6 +195,7 @@ function ProviderForm({
             ? "AI settings saved."
             : "AI is off.",
       );
+      return result.settings;
     } catch {
       setStatus(errors.error);
     } finally {
@@ -244,7 +250,7 @@ function ProviderForm({
     return errors[failure.status];
   }
 
-  async function run(operation: "list" | "test") {
+  async function run(operation: "list" | "test", config = draft) {
     const id = crypto.randomUUID();
     request.current = id;
     setBusy(operation);
@@ -254,7 +260,7 @@ function ProviderForm({
         ? "Looking for chat models…"
         : "Waiting for the model…",
     );
-    const target = { provider: draft.provider, endpoint: draft.endpoint };
+    const target = { provider: config.provider, endpoint: config.endpoint };
     try {
       if (operation === "list") {
         const result = await bridge.listAiModels(id, target);
@@ -275,7 +281,7 @@ function ProviderForm({
       } else {
         const result = await bridge.testAiConnection(
           id,
-          { ...target, model: hosted ? draft.model.trim() : draft.model },
+          { ...target, model: hosted ? config.model.trim() : config.model },
           (chunk) => {
             if (request.current === id) setResponse((value) => value + chunk);
           },
@@ -315,41 +321,67 @@ function ProviderForm({
           checked={draft.enabled}
           disabled={!!busy}
           onChange={(event) => {
-            setDraft({ ...draft, enabled: event.target.checked });
+            const enabled = event.target.checked;
             setResponse("");
-            setStatus("");
+            if (dirty) {
+              setDraft({ ...draft, enabled });
+              setStatus("Save AI Settings to keep these changes.");
+            } else {
+              void save(false, enabled);
+            }
           }}
         />
       </label>
       <fieldset className="mac-ai-fields" disabled={!draft.enabled || !!busy}>
-        <label className="mac-setting">
-          <span>
-            Provider
-            <small>
-              {hosted || chatGpt
-                ? "Runs on the provider’s servers."
-                : "Runs on this Mac with downloaded models."}
-            </small>
-          </span>
-          <select
-            value={draft.provider}
-            onChange={(event) => {
-              const provider = event.target.value as AiProvider;
-              changeTarget(
-                provider,
-                provider === saved.provider
-                  ? saved.endpoint
-                  : providers[provider].endpoint,
+        <h3 className="mac-ai-step">1 · Choose a provider</h3>
+        <div
+          className="mac-ai-provider-grid"
+          role="group"
+          aria-label="Provider"
+        >
+          {(["chatgpt", "hosted", "ollama", "lm-studio"] as const).map(
+            (provider) => {
+              const Icon =
+                provider === "chatgpt"
+                  ? MessageCircle
+                  : provider === "hosted"
+                    ? KeyRound
+                    : Laptop;
+              return (
+                <button
+                  type="button"
+                  key={provider}
+                  aria-pressed={draft.provider === provider}
+                  onClick={() =>
+                    changeTarget(
+                      provider,
+                      provider === saved.provider
+                        ? saved.endpoint
+                        : providers[provider].endpoint,
+                    )
+                  }
+                >
+                  <Icon size={17} aria-hidden="true" />
+                  <span>
+                    <strong>
+                      {provider === "chatgpt"
+                        ? "ChatGPT"
+                        : providers[provider].label}
+                    </strong>
+                    <small>
+                      {provider === "chatgpt"
+                        ? "Browser sign-in · no API key"
+                        : provider === "hosted"
+                          ? "HTTPS endpoint and API key"
+                          : "Local models on this Mac"}
+                    </small>
+                  </span>
+                </button>
               );
-            }}
-          >
-            {Object.entries(providers).map(([id, provider]) => (
-              <option key={id} value={id}>
-                {provider.label}
-              </option>
-            ))}
-          </select>
-        </label>
+            },
+          )}
+        </div>
+        <h3 className="mac-ai-step">2 · Connect your provider</h3>
         {!chatGpt && (
           <label className="mac-setting">
             <span>
@@ -379,7 +411,7 @@ function ProviderForm({
               ChatGPT account
               <small>
                 {endpointChanged || !saved.enabled
-                  ? "Save your AI settings before signing in."
+                  ? "Continue to authorize eligible ChatGPT plan usage in your browser."
                   : connected
                     ? "Connected on this Mac."
                     : "Authorize eligible ChatGPT plan usage in your browser. No API key required."}
@@ -388,8 +420,22 @@ function ProviderForm({
             <Button
               type="button"
               variant="outline"
-              disabled={endpointChanged || !saved.enabled}
-              onClick={() => void changeChatGptSession(connected)}
+              onClick={async () => {
+                if (connected && !endpointChanged && saved.enabled) {
+                  await changeChatGptSession(true);
+                  return;
+                }
+                const config =
+                  endpointChanged || !saved.enabled ? await save() : saved;
+                if (!config) return;
+                if (config.chatGptConnected) {
+                  setStatus(
+                    "ChatGPT is already connected. Find a model to test it.",
+                  );
+                } else {
+                  await changeChatGptSession(false);
+                }
+              }}
             >
               {connected && !endpointChanged
                 ? "Disconnect ChatGPT"
@@ -408,8 +454,19 @@ function ProviderForm({
                     : "Save a key for this endpoint. Keys are protected by macOS Keychain."}
                 </small>
               </span>
+              {hasSavedKey && (
+                <code
+                  className="mac-ai-key-preview"
+                  aria-label="Masked saved API key"
+                >
+                  {saved.apiKeyPreview ?? "******"}
+                </code>
+              )}
               <input
                 ref={keyInput}
+                placeholder={
+                  hasSavedKey ? "Enter a replacement key" : "Enter your API key"
+                }
                 type="password"
                 autoComplete="off"
                 spellCheck={false}
@@ -430,6 +487,21 @@ function ProviderForm({
             )}
           </div>
         )}
+        {!chatGpt && (
+          <div className="mac-ai-actions">
+            <Button
+              type="button"
+              disabled={hosted && !hasSavedKey && !hasNewKey}
+              onClick={async () => {
+                const config = dirty ? await save() : saved;
+                if (config) await run("list", config);
+              }}
+            >
+              {canDiscover ? "Refresh Models" : "Save Connection & Find Models"}
+            </Button>
+          </div>
+        )}
+        <h3 className="mac-ai-step">3 · Select a model and verify</h3>
         <label className="mac-setting">
           <span>
             {hosted ? "Model ID" : "Model"}
@@ -479,28 +551,31 @@ function ProviderForm({
           )}
         </label>
         <div className="mac-ai-actions">
-          <Button
-            type="button"
-            variant="outline"
-            disabled={!canDiscover}
-            onClick={() => void run("list")}
-          >
-            {models.length ? "Refresh Models" : "Find Models"}
-          </Button>
+          {chatGpt && (
+            <Button
+              type="button"
+              variant="outline"
+              disabled={!canDiscover}
+              onClick={() => void run("list")}
+            >
+              {models.length ? "Refresh Models" : "Find Models"}
+            </Button>
+          )}
           <Button
             type="button"
             variant="outline"
             disabled={!canDiscover || !draft.model.trim()}
-            onClick={() => void run("test")}
+            onClick={async () => {
+              const config = dirty ? await save() : saved;
+              if (config) await run("test", config);
+            }}
           >
-            Test Connection
+            Save Model & Test
           </Button>
         </div>
       </fieldset>
       <p className="mac-settings-status">
         The connection test sends a preset message, never your document.
-        {!chatGpt &&
-          " Save the endpoint and any key before looking for models."}
       </p>
       <div className="mac-ai-actions">
         <Button type="submit" disabled={!!busy || !dirty}>
