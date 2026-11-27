@@ -35,6 +35,7 @@ function fixture() {
     },
     testConnection: operation,
     listModels: operation,
+    signInChatGpt: operation,
   });
   return {
     invoke: (channel, ...args) => handlers.get(`drymdf:ai-${channel}`)(...args),
@@ -72,6 +73,16 @@ test("AI stream and cancellation are scoped to the owning editor", async () => {
   assert.deepEqual(await result, { status: "cancelled" });
   assert.equal(invoke("cancel-request", first, "connection-1"), false);
   assert.equal(first.listenerCount("destroyed"), 0);
+});
+
+test("cancelling browser sign-in aborts only the owning editor’s request", async () => {
+  const { invoke, jobs } = fixture();
+  const owner = sender();
+  const result = invoke("chatgpt-sign-in", owner, "sign-in");
+  assert.equal(invoke("cancel-request", sender(), "sign-in"), false);
+  assert.equal(jobs[0].signal.aborted, false);
+  assert.equal(invoke("cancel-request", owner, "sign-in"), true);
+  assert.deepEqual(await result, { status: "cancelled" });
 });
 
 test("AI work aborts on editor teardown, cross-document navigation, or app shutdown", async () => {
@@ -185,6 +196,8 @@ test("main registers AI behind the existing top-level editor request guard", asy
     require(name) {
       if (name === "electron") return electron;
       if (name === "./ai-ipc.cjs") return { registerAiIpc };
+      if (name === "./chatgpt-auth.cjs")
+        return { createChatGptAuth: () => ({}) };
       if (name === "./ai-providers.cjs")
         return {
           createAiProviders: (options) => {

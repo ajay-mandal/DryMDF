@@ -1,6 +1,6 @@
 {
   "apps/frontend/**/*.{ts,tsx}": [
-    "eslint --config apps/frontend/eslint.config.mjs --fix",
+    "pnpm --filter @drymdf/frontend exec eslint --fix",
     "prettier --write"
   ],
   "*.{json,md}": ["prettier --write"]

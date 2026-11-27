@@ -9,6 +9,7 @@ const defaults = {
   enabled: false,
   model: "",
 };
+const chatGptEndpoint = "https://api.openai.com/v1";
 const prompt = "Reply with a short greeting to confirm the connection.";
 const maxBody = 2 * 1024 * 1024;
 const status = (value) => ({ status: value });
@@ -16,7 +17,10 @@ const ok = (value) => ({ status: "ok", ...value });
 class ProviderError extends Error {}
 
 function targetOf(input) {
-  if (!input || !["ollama", "lm-studio", "hosted"].includes(input.provider))
+  if (
+    !input ||
+    !["ollama", "lm-studio", "hosted", "chatgpt"].includes(input.provider)
+  )
     return;
   const { provider, endpoint } = input;
   if (
@@ -32,7 +36,9 @@ function targetOf(input) {
     return;
   }
   if (url.username || url.password) return;
-  if (provider === "hosted") {
+  if (provider === "chatgpt") {
+    if (url.href.replace(/\/+$/, "") !== chatGptEndpoint) return;
+  } else if (provider === "hosted") {
     if (url.protocol !== "https:") return;
   } else {
     if (
@@ -120,6 +126,7 @@ async function* frames(body, ollama) {
 function createAiProviders({
   userData,
   safeStorage,
+  chatGptAuth,
   fetch: fetchRequest = fetch,
 }) {
   const path = join(userData, "ai-settings.json");
@@ -140,15 +147,18 @@ function createAiProviders({
     }
   }
 
-  const publicSettings = (settings, keys) => ({
+  const publicSettings = async (settings, keys) => ({
     ...settings,
     hasApiKey: Boolean(keys[keyId(settings)]),
+    chatGptConnected:
+      settings.provider === "chatgpt" &&
+      Boolean(await chatGptAuth?.hasSession()),
   });
 
   async function getSettings() {
     await pending;
     const { settings, keys } = await load();
-    return ok({ settings: publicSettings(settings, keys) });
+    return ok({ settings: await publicSettings(settings, keys) });
   }
 
   function saveSettings(input) {
@@ -184,7 +194,7 @@ function createAiProviders({
       await replaceFile(path, JSON.stringify({ settings, keys }), {
         mode: 0o600,
       });
-      return ok({ settings: publicSettings(settings, keys) });
+      return ok({ settings: await publicSettings(settings, keys) });
     });
     pending = work.catch(() => {});
     return work.catch(() => status("error"));
@@ -206,7 +216,10 @@ function createAiProviders({
       )
         return status("invalid");
       let key;
-      if (target.provider === "hosted") {
+      if (target.provider === "chatgpt") {
+        key = await chatGptAuth?.accessToken(signal);
+        if (!key) return status("auth");
+      } else if (target.provider === "hosted") {
         const stored = keys[keyId(target)];
         if (!stored) return status("auth");
         if (!safeStorage.isEncryptionAvailable()) return status("error");
@@ -263,12 +276,15 @@ function createAiProviders({
     const result = new Map();
     for (const item of entries) {
       if (!item || typeof item !== "object") continue;
+      if (provider === "chatgpt" && item.visibility !== "list") continue;
       const id =
         provider === "ollama"
           ? (item.model ?? item.name)
           : provider === "lm-studio"
             ? item.key
-            : item.id;
+            : provider === "chatgpt"
+              ? item.slug
+              : item.id;
       if (!id || !validModel(id)) continue;
       if (
         provider === "ollama" &&
@@ -300,7 +316,7 @@ function createAiProviders({
     const { model } = input;
     return run(input, options, 60000, async (provider, request) => {
       const ollama = provider === "ollama";
-      if (provider !== "hosted") {
+      if (provider === "ollama" || provider === "lm-studio") {
         const models = await modelsFor(provider, request);
         if (!models.length) return status("empty");
         if (!models.some(({ id }) => id === model)) return status("invalid");
@@ -314,35 +330,59 @@ function createAiProviders({
         )
           return status("invalid");
       }
+      const chatGpt = provider === "chatgpt";
+      const messages = [{ role: "user", content: prompt }];
       const route = ollama
         ? "/api/chat"
         : provider === "lm-studio"
           ? "/v1/chat/completions"
-          : "/chat/completions";
+          : chatGpt
+            ? "/responses"
+            : "/chat/completions";
       const response = await request(route, {
         model,
-        messages: [{ role: "user", content: prompt }],
         stream: true,
-        ...(ollama ? { options: { num_predict: 64 } } : { max_tokens: 64 }),
+        ...(chatGpt
+          ? { input: messages, store: false }
+          : {
+              messages,
+              ...(ollama
+                ? { options: { num_predict: 64 } }
+                : { max_tokens: 64 }),
+            }),
       });
       let text = "";
       let finished = false;
       for await (const frame of frames(response.body, ollama)) {
         if (!ollama && frame === "[DONE]") {
-          finished = true;
+          finished = !chatGpt;
           break;
         }
         const packet = JSON.parse(frame);
-        if (packet.error) return status("error");
+        if (
+          packet.error ||
+          (chatGpt &&
+            ["error", "response.failed", "response.incomplete"].includes(
+              packet.type,
+            ))
+        )
+          return status("error");
         const chunk = ollama
           ? packet.message?.content
-          : packet.choices?.[0]?.delta?.content;
+          : chatGpt
+            ? packet.type === "response.output_text.delta"
+              ? packet.delta
+              : undefined
+            : packet.choices?.[0]?.delta?.content;
         if (typeof chunk === "string" && chunk.length) {
           if (text.length + chunk.length > 8192) return status("error");
           text += chunk;
           options.onChunk?.(chunk);
         }
-        if (ollama && packet.done === true) {
+        if (
+          (ollama && packet.done === true) ||
+          (chatGpt && packet.type === "response.completed")
+        ) {
           finished = true;
           break;
         }
@@ -350,7 +390,31 @@ function createAiProviders({
       return text.trim() && finished ? ok({ text }) : status("error");
     });
   }
-  return { getSettings, saveSettings, listModels, testConnection };
+  async function signInChatGpt(_target, { signal }) {
+    const { settings } = await load();
+    if (!settings.enabled || settings.provider !== "chatgpt")
+      return status("invalid");
+    const result = await chatGptAuth?.signIn({ signal });
+    return result?.status === "ok"
+      ? ok({ connected: true })
+      : (result ?? status("error"));
+  }
+
+  async function disconnectChatGpt() {
+    const result = await chatGptAuth?.disconnect();
+    return result?.status === "ok"
+      ? ok({ connected: false })
+      : (result ?? status("error"));
+  }
+
+  return {
+    getSettings,
+    saveSettings,
+    listModels,
+    testConnection,
+    signInChatGpt,
+    disconnectChatGpt,
+  };
 }
 
 module.exports = { createAiProviders };

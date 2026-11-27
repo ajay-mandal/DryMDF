@@ -77,6 +77,9 @@ contextBridge.exposeInMainWorld("drymdfDesktop", {
     ipcRenderer.invoke("drymdf:release-export", handle),
   notify: (type) => ipcRenderer.invoke("drymdf:notify", type),
   getAiSettings: () => ipcRenderer.invoke("drymdf:ai-get-settings"),
+  signInChatGpt: (requestId) =>
+    ipcRenderer.invoke("drymdf:ai-chatgpt-sign-in", requestId),
+  disconnectChatGpt: () => ipcRenderer.invoke("drymdf:ai-chatgpt-disconnect"),
   saveAiSettings: (settings) =>
     ipcRenderer.invoke("drymdf:ai-save-settings", settings),
   listAiModels: (requestId, target) =>

@@ -29,6 +29,7 @@ const {
 const { createExports } = require("./exports.cjs");
 const { registerAiIpc } = require("./ai-ipc.cjs");
 const { createAiProviders } = require("./ai-providers.cjs");
+const { createChatGptAuth } = require("./chatgpt-auth.cjs");
 const { getBaseStyles, getDesktopPrintLayout } = require(
   join(
     app.isPackaged ? process.resourcesPath : join(__dirname, "build"),
@@ -262,9 +263,15 @@ app.whenReady().then(() => {
     (details, callback) =>
       callback({ cancel: details.webContentsId !== undefined }),
   );
+  const userData = app.getPath("userData");
+  const chatGptAuth = createChatGptAuth({
+    userData,
+    safeStorage,
+    openExternal: (url) => shell.openExternal(url),
+  });
   const abortAiRequests = registerAiIpc(
     handleEditorRequest,
-    createAiProviders({ userData: app.getPath("userData"), safeStorage }),
+    createAiProviders({ userData, safeStorage, chatGptAuth }),
   );
   app.on("will-quit", abortAiRequests);
   handleEditorRequest("drymdf:print-pdf", (_sender, html, options = {}) => {

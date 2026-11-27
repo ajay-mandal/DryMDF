@@ -5,7 +5,7 @@ const { join } = require("node:path");
 const test = require("node:test");
 const { createAiProviders } = require("../ai-providers.cjs");
 
-async function fixture(t, fetch) {
+async function fixture(t, fetch, chatGptAuth) {
   const userData = await mkdtemp(join(tmpdir(), "drymdf-ai-test-"));
   t.after(() => rm(userData, { recursive: true, force: true }));
   const safeStorage = {
@@ -13,7 +13,8 @@ async function fixture(t, fetch) {
     encryptString: (key) => Buffer.from(key.split("").reverse().join("")),
     decryptString: (key) => key.toString().split("").reverse().join(""),
   };
-  const create = () => createAiProviders({ userData, safeStorage, fetch });
+  const create = () =>
+    createAiProviders({ userData, safeStorage, fetch, chatGptAuth });
   return { userData, create };
 }
 
@@ -138,4 +139,81 @@ test("LM Studio separates unavailable and empty states, then parses a recovered 
     status: "ok",
     text: "hello",
   });
+});
+
+test("ChatGPT uses the plan catalog and requires a completed Responses stream", async (t) => {
+  const target = {
+    ...hosted,
+    endpoint: "https://api.openai.com/v1",
+    provider: "chatgpt",
+  };
+  let connected = false;
+  let finish = false;
+  const { create } = await fixture(
+    t,
+    async (url, request) => {
+      assert.equal(request.headers.Authorization, "Bearer fixture-session");
+      assert.equal(request.redirect, "manual");
+      if (url === `${target.endpoint}/models`)
+        return Response.json({
+          models: [
+            { slug: "test", display_name: "Test model", visibility: "list" },
+            { slug: "internal", visibility: "hidden" },
+          ],
+        });
+      assert.equal(url, `${target.endpoint}/responses`);
+      const body = JSON.parse(request.body);
+      assert.equal(body.stream, true);
+      assert.equal(body.store, false);
+      assert.equal(body.input.length, 1);
+      assert.doesNotMatch(request.body, /private draft/);
+      return new Response(
+        'data: {"type":"response.output_text.delta","delta":"Hi"}\n\n' +
+          (finish
+            ? 'data: {"type":"response.completed"}\n\n'
+            : "data: [DONE]\n\n"),
+      );
+    },
+    {
+      hasSession: async () => connected,
+      signIn: async () => {
+        connected = true;
+        return { status: "ok" };
+      },
+      disconnect: async () => {
+        connected = false;
+        return { status: "ok" };
+      },
+      accessToken: async () => (connected ? "fixture-session" : null),
+    },
+  );
+  const app = create();
+  assert.deepEqual(
+    await app.saveSettings({ ...target, endpoint: "https://other.example/v1" }),
+    { status: "invalid" },
+  );
+  assert.deepEqual(
+    await app.saveSettings({ ...target, apiKey: "not-a-session" }),
+    { status: "invalid" },
+  );
+  await app.saveSettings(target);
+  assert.deepEqual(await app.listModels(target), { status: "auth" });
+  assert.deepEqual(await app.signInChatGpt(null, {}), {
+    status: "ok",
+    connected: true,
+  });
+  assert.deepEqual((await app.listModels(target)).models, [
+    { id: "test", label: "Test model" },
+  ]);
+  assert.deepEqual(await app.testConnection(target), { status: "error" });
+  finish = true;
+  assert.deepEqual(
+    await app.testConnection({ ...target, draft: "private draft" }),
+    { status: "ok", text: "Hi" },
+  );
+  assert.deepEqual(await app.disconnectChatGpt(), {
+    status: "ok",
+    connected: false,
+  });
+  assert.deepEqual(await app.listModels(target), { status: "auth" });
 });

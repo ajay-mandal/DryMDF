@@ -82,6 +82,11 @@ function registerAiIpc(handleEditorRequest, service) {
   );
   handleEditorRequest("drymdf:ai-list-models", run(service.listModels));
   handleEditorRequest("drymdf:ai-test-connection", run(service.testConnection));
+  handleEditorRequest("drymdf:ai-chatgpt-sign-in", run(service.signInChatGpt));
+  handleEditorRequest(
+    "drymdf:ai-chatgpt-disconnect",
+    settingsHandler(service.disconnectChatGpt),
+  );
   handleEditorRequest("drymdf:ai-cancel-request", (sender, id) => {
     const controller = owners.get(sender)?.requests.get(id);
     if (!controller || controller.signal.aborted) return false;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Cpu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type {
@@ -13,8 +13,12 @@ import type {
 const providers = {
   ollama: { label: "Ollama", endpoint: "http://127.0.0.1:11434" },
   "lm-studio": { label: "LM Studio", endpoint: "http://127.0.0.1:1234" },
+  chatgpt: {
+    label: "ChatGPT (account sign-in)",
+    endpoint: "https://api.openai.com/v1",
+  },
   hosted: {
-    label: "Hosted (OpenAI-compatible)",
+    label: "OpenAI-compatible",
     endpoint: "https://api.openai.com/v1",
   },
 } satisfies Record<AiProvider, { label: string; endpoint: string }>;
@@ -34,7 +38,7 @@ const errors: Record<AiFailure["status"], string> = {
 };
 
 type Model = { id: string; label: string };
-type Operation = "save" | "list" | "test";
+type Operation = "save" | "list" | "test" | "sign-in" | "disconnect";
 
 export function DesktopAiSettings() {
   const bridge = window.drymdfDesktop;
@@ -103,7 +107,10 @@ function ProviderForm({
   const keyInput = useRef<HTMLInputElement>(null);
   const [hasNewKey, setHasNewKey] = useState(false);
   const request = useRef<string | null>(null);
+  const modelListId = useId();
   const hosted = draft.provider === "hosted";
+  const chatGpt = draft.provider === "chatgpt";
+  const [connected, setConnected] = useState(initial.chatGptConnected);
   const endpointChanged =
     draft.provider !== saved.provider || draft.endpoint !== saved.endpoint;
   const hasSavedKey = hosted && !endpointChanged && saved.hasApiKey;
@@ -111,7 +118,7 @@ function ProviderForm({
     draft.enabled &&
     saved.enabled &&
     !endpointChanged &&
-    (!hosted || (hasSavedKey && !hasNewKey));
+    (chatGpt ? connected : !hosted || (hasSavedKey && !hasNewKey));
   const dirty =
     draft.enabled !== saved.enabled ||
     endpointChanged ||
@@ -144,6 +151,12 @@ function ProviderForm({
     setStatus("");
   }
 
+  function changeModel(model: string): void {
+    setDraft((value) => ({ ...value, model }));
+    setResponse("");
+    setStatus("");
+  }
+
   async function save(removeKey = false) {
     setBusy("save");
     setStatus("Saving settings…");
@@ -154,7 +167,7 @@ function ProviderForm({
         enabled,
         provider,
         endpoint,
-        model,
+        model: hosted ? model.trim() : model,
         ...(removeKey ? { apiKey: null } : apiKey ? { apiKey } : {}),
       });
       if (result.status !== "ok") {
@@ -163,6 +176,7 @@ function ProviderForm({
       }
       setDraft(result.settings);
       setSaved(result.settings);
+      setConnected(result.settings.chatGptConnected);
       if (keyInput.current) keyInput.current.value = "";
       setHasNewKey(false);
       if (removeKey || !enabled) {
@@ -181,6 +195,53 @@ function ProviderForm({
     } finally {
       setBusy(undefined);
     }
+  }
+
+  async function changeChatGptSession(disconnect: boolean): Promise<void> {
+    const id = crypto.randomUUID();
+    request.current = id;
+    setBusy(disconnect ? "disconnect" : "sign-in");
+    setResponse("");
+    setStatus(
+      disconnect ? "Disconnecting…" : "Finish signing in in your browser…",
+    );
+    try {
+      const result = disconnect
+        ? await bridge.disconnectChatGpt()
+        : await bridge.signInChatGpt(id);
+      if (request.current !== id) return;
+      if (result.status !== "ok") {
+        setStatus(
+          result.status === "auth"
+            ? "ChatGPT sign-in didn’t grant plan access. Try again with an eligible account."
+            : errors[result.status],
+        );
+        return;
+      }
+      setConnected(result.connected);
+      setModels([]);
+      changeModel("");
+      setStatus(
+        result.connected
+          ? "ChatGPT connected. Find a model to test it."
+          : "ChatGPT disconnected from this Mac.",
+      );
+    } catch {
+      if (request.current === id) setStatus(errors.error);
+    } finally {
+      if (request.current === id) {
+        request.current = null;
+        setBusy(undefined);
+      }
+    }
+  }
+
+  function describeFailure(failure: AiFailure): string {
+    if (chatGpt && failure.status === "auth") {
+      setConnected(false);
+      return "ChatGPT access expired or was denied. Sign in again.";
+    }
+    return errors[failure.status];
   }
 
   async function run(operation: "list" | "test") {
@@ -205,12 +266,16 @@ function ProviderForm({
           );
         } else {
           setModels([]);
-          setStatus(errors[result.status]);
+          setStatus(
+            hosted && (result.status === "empty" || result.status === "error")
+              ? "Couldn’t list models. Enter a model ID from your provider to test the connection."
+              : describeFailure(result),
+          );
         }
       } else {
         const result = await bridge.testAiConnection(
           id,
-          { ...target, model: draft.model },
+          { ...target, model: hosted ? draft.model.trim() : draft.model },
           (chunk) => {
             if (request.current === id) setResponse((value) => value + chunk);
           },
@@ -220,7 +285,7 @@ function ProviderForm({
         setStatus(
           result.status === "ok"
             ? "Connection verified."
-            : errors[result.status],
+            : describeFailure(result),
         );
       }
     } catch {
@@ -261,7 +326,7 @@ function ProviderForm({
           <span>
             Provider
             <small>
-              {hosted
+              {hosted || chatGpt
                 ? "Runs on the provider’s servers."
                 : "Runs on this Mac with downloaded models."}
             </small>
@@ -285,27 +350,53 @@ function ProviderForm({
             ))}
           </select>
         </label>
-        <label className="mac-setting">
-          <span>
-            Endpoint
-            <small>
-              {hosted
-                ? "HTTPS API base URL, usually ending in /v1."
-                : "Use a loopback address on this Mac."}
-            </small>
-          </span>
-          <input
-            type="text"
-            inputMode="url"
-            autoCapitalize="none"
-            spellCheck={false}
-            value={draft.endpoint}
-            maxLength={2048}
-            onChange={(event) =>
-              changeTarget(draft.provider, event.target.value)
-            }
-          />
-        </label>
+        {!chatGpt && (
+          <label className="mac-setting">
+            <span>
+              Endpoint
+              <small>
+                {hosted
+                  ? "Enter your provider’s HTTPS API base URL, not its website or full chat endpoint."
+                  : "Use a loopback address on this Mac."}
+              </small>
+            </span>
+            <input
+              type="text"
+              inputMode="url"
+              autoCapitalize="none"
+              spellCheck={false}
+              value={draft.endpoint}
+              maxLength={2048}
+              onChange={(event) =>
+                changeTarget(draft.provider, event.target.value)
+              }
+            />
+          </label>
+        )}
+        {chatGpt && (
+          <div className="mac-setting">
+            <span>
+              ChatGPT account
+              <small>
+                {endpointChanged || !saved.enabled
+                  ? "Save your AI settings before signing in."
+                  : connected
+                    ? "Connected on this Mac."
+                    : "Authorize eligible ChatGPT plan usage in your browser. No API key required."}
+              </small>
+            </span>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={endpointChanged || !saved.enabled}
+              onClick={() => void changeChatGptSession(connected)}
+            >
+              {connected && !endpointChanged
+                ? "Disconnect ChatGPT"
+                : "Continue with ChatGPT"}
+            </Button>
+          </div>
+        )}
         {hosted && (
           <div className="mac-setting">
             <label>
@@ -340,26 +431,52 @@ function ProviderForm({
           </div>
         )}
         <label className="mac-setting">
-          <span>Model</span>
-          <select
-            value={draft.model}
-            disabled={!canDiscover}
-            onChange={(event) => {
-              setDraft({ ...draft, model: event.target.value });
-              setResponse("");
-              setStatus("");
-            }}
-          >
-            <option value="">Select a chat model</option>
-            {draft.model && !models.some(({ id }) => id === draft.model) && (
-              <option value={draft.model}>{draft.model}</option>
+          <span>
+            {hosted ? "Model ID" : "Model"}
+            {hosted && (
+              <small>Find models or enter the ID from your provider.</small>
             )}
-            {models.map(({ id, label }) => (
-              <option key={id} value={id}>
-                {label}
-              </option>
-            ))}
-          </select>
+          </span>
+          {hosted ? (
+            <>
+              <input
+                type="text"
+                name="model"
+                value={draft.model}
+                list={models.length ? modelListId : undefined}
+                maxLength={256}
+                disabled={!canDiscover}
+                autoCapitalize="none"
+                spellCheck={false}
+                onChange={(event) => changeModel(event.target.value)}
+              />
+              <datalist id={modelListId}>
+                {models.map(({ id, label }) => (
+                  <option
+                    key={id}
+                    value={id}
+                    label={label === id ? undefined : label}
+                  />
+                ))}
+              </datalist>
+            </>
+          ) : (
+            <select
+              value={draft.model}
+              disabled={!canDiscover}
+              onChange={(event) => changeModel(event.target.value)}
+            >
+              <option value="">Select a chat model</option>
+              {draft.model && !models.some(({ id }) => id === draft.model) && (
+                <option value={draft.model}>{draft.model}</option>
+              )}
+              {models.map(({ id, label }) => (
+                <option key={id} value={id}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          )}
         </label>
         <div className="mac-ai-actions">
           <Button
@@ -373,7 +490,7 @@ function ProviderForm({
           <Button
             type="button"
             variant="outline"
-            disabled={!canDiscover || !draft.model}
+            disabled={!canDiscover || !draft.model.trim()}
             onClick={() => void run("test")}
           >
             Test Connection
@@ -381,14 +498,15 @@ function ProviderForm({
         </div>
       </fieldset>
       <p className="mac-settings-status">
-        The connection test sends a preset message, never your document. Save
-        the endpoint and any key before looking for models.
+        The connection test sends a preset message, never your document.
+        {!chatGpt &&
+          " Save the endpoint and any key before looking for models."}
       </p>
       <div className="mac-ai-actions">
         <Button type="submit" disabled={!!busy || !dirty}>
           Save AI Settings
         </Button>
-        {(busy === "list" || busy === "test") && (
+        {(busy === "list" || busy === "test" || busy === "sign-in") && (
           <Button
             type="button"
             variant="outline"

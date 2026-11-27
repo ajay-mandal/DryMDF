@@ -29,6 +29,7 @@ module.exports = {
         "/atomic-file.cjs",
         "/ai-ipc.cjs",
         "/ai-providers.cjs",
+        "/chatgpt-auth.cjs",
       ].includes(path),
     extraResource: [
       join(frontend, "out"),
