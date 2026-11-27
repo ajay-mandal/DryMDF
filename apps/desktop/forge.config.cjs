@@ -27,6 +27,8 @@ module.exports = {
         "/documents.cjs",
         "/exports.cjs",
         "/atomic-file.cjs",
+        "/ai-ipc.cjs",
+        "/ai-providers.cjs",
       ].includes(path),
     extraResource: [
       join(frontend, "out"),

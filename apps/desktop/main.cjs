@@ -6,6 +6,7 @@ const {
   net,
   Notification,
   protocol,
+  safeStorage,
   session,
   shell,
 } = require("electron");
@@ -26,6 +27,8 @@ const {
   readImage,
 } = require("./documents.cjs");
 const { createExports } = require("./exports.cjs");
+const { registerAiIpc } = require("./ai-ipc.cjs");
+const { createAiProviders } = require("./ai-providers.cjs");
 const { getBaseStyles, getDesktopPrintLayout } = require(
   join(
     app.isPackaged ? process.resourcesPath : join(__dirname, "build"),
@@ -259,6 +262,11 @@ app.whenReady().then(() => {
     (details, callback) =>
       callback({ cancel: details.webContentsId !== undefined }),
   );
+  const abortAiRequests = registerAiIpc(
+    handleEditorRequest,
+    createAiProviders({ userData: app.getPath("userData"), safeStorage }),
+  );
+  app.on("will-quit", abortAiRequests);
   handleEditorRequest("drymdf:print-pdf", (_sender, html, options = {}) => {
     if (typeof html !== "string" || !options || typeof options !== "object") {
       throw new Error("Invalid PDF request");

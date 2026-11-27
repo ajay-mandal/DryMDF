@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useTheme } from "next-themes";
 import { ArrowLeft, Bell, Monitor } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { DesktopAiSettings } from "./desktop-ai-settings";
 import {
   exportNotificationsEnabled,
   restoreDesktopSession,
@@ -136,6 +137,7 @@ export function DesktopSettings({ onBack }: Props) {
           </p>
         )}
       </div>
+      <DesktopAiSettings />
     </section>
   );
 }

@@ -1,3 +1,4 @@
+import type { DesktopAiBridge } from "@/types/desktop-ai";
 import type { PdfOptions } from "@/types/pdf";
 
 export interface RecentDocument {
@@ -34,7 +35,7 @@ type DesktopExportResult =
 
 declare global {
   interface Window {
-    drymdfDesktop?: {
+    drymdfDesktop?: DesktopAiBridge & {
       printPdf: (html: string, options: PdfOptions) => Promise<ArrayBuffer>;
       openMarkdown: (file: File) => Promise<DesktopDocument>;
       chooseMarkdown: () => Promise<DesktopDocument | null>;

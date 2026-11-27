@@ -1,5 +1,39 @@
 const { contextBridge, ipcRenderer, webUtils } = require("electron");
 
+const activeAiTests = new Set();
+
+async function testAiConnection(requestId, target, onChunk) {
+  if (
+    typeof requestId !== "string" ||
+    !/^[a-zA-Z0-9_-]{1,80}$/.test(requestId) ||
+    activeAiTests.has(requestId) ||
+    activeAiTests.size >= 8 ||
+    (onChunk !== undefined && typeof onChunk !== "function")
+  ) {
+    return { status: "invalid" };
+  }
+  const listener = (_event, id, chunk) => {
+    if (id !== requestId || typeof chunk !== "string") return;
+    try {
+      onChunk(chunk);
+    } catch {
+      // A renderer callback must not surface provider output in preload errors.
+    }
+  };
+  activeAiTests.add(requestId);
+  if (onChunk) ipcRenderer.on("drymdf:ai-chunk", listener);
+  try {
+    return await ipcRenderer.invoke(
+      "drymdf:ai-test-connection",
+      requestId,
+      target,
+    );
+  } finally {
+    if (onChunk) ipcRenderer.removeListener("drymdf:ai-chunk", listener);
+    activeAiTests.delete(requestId);
+  }
+}
+
 contextBridge.exposeInMainWorld("drymdfDesktop", {
   printPdf: (html, options) =>
     ipcRenderer.invoke("drymdf:print-pdf", html, options),
@@ -42,4 +76,12 @@ contextBridge.exposeInMainWorld("drymdfDesktop", {
   releaseExport: (handle) =>
     ipcRenderer.invoke("drymdf:release-export", handle),
   notify: (type) => ipcRenderer.invoke("drymdf:notify", type),
+  getAiSettings: () => ipcRenderer.invoke("drymdf:ai-get-settings"),
+  saveAiSettings: (settings) =>
+    ipcRenderer.invoke("drymdf:ai-save-settings", settings),
+  listAiModels: (requestId, target) =>
+    ipcRenderer.invoke("drymdf:ai-list-models", requestId, target),
+  testAiConnection,
+  cancelAiRequest: (requestId) =>
+    ipcRenderer.invoke("drymdf:ai-cancel-request", requestId),
 });
